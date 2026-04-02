@@ -4505,7 +4505,7 @@ function createUpChunkObservable(uuid2, uploadUrl2, source) {
   });
 }
 function formatDriveShareLink(url) {
-  const formatExportLink = (id) => `https://drive.google.com/uc?export=download&id=${id}`;
+  const formatExportLink = (id) => `https://drive.usercontent.google.com/download?export=download&authuser=0&confirm=t&at=0&id=${id}`;
   try {
     const trimmed = url.trim(), parsed = new URL(trimmed);
     if (parsed.hostname !== "drive.google.com")
