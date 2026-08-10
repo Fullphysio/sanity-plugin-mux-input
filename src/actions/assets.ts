@@ -103,6 +103,37 @@ export function addTextTrackFromUrl(
 }
 
 /**
+ * Adds a new alternative audio track to an existing asset using an audio file URL.
+ * Mux accepts most common audio formats (M4A, WAV, MP3) and requires the asset to be `ready`.
+ */
+export function addAudioTrackFromUrl(
+  client: SanityClient,
+  assetId: string,
+  audioUrl: string,
+  options: {
+    language_code: string
+    name?: string
+  }
+) {
+  const {dataset} = client.config()
+
+  return client.request<{data: MuxAsset}>({
+    url: `/addons/mux/assets/${dataset}/${assetId}/tracks`,
+    withCredentials: true,
+    method: 'POST',
+    body: {
+      url: audioUrl,
+      type: 'audio',
+      language_code: options.language_code,
+      ...(options.name ? {name: options.name} : {}),
+    },
+    headers: {
+      'Content-Type': 'application/json',
+    },
+  })
+}
+
+/**
  * Generates subtitles automatically for an audio track
  */
 export function generateSubtitles(
@@ -134,15 +165,30 @@ export function generateSubtitles(
 }
 
 /**
- * Deletes a text track from an asset
+ * Deletes a track (text or audio) from an asset
  */
-export function deleteTextTrack(client: SanityClient, assetId: string, trackId: string) {
+export function deleteAssetTrack(client: SanityClient, assetId: string, trackId: string) {
   const {dataset} = client.config()
   return client.request<{data: MuxAsset}>({
     url: `/addons/mux/assets/${dataset}/${assetId}/tracks/${trackId}`,
     withCredentials: true,
     method: 'DELETE',
   })
+}
+
+/**
+ * Deletes a text track from an asset
+ */
+export function deleteTextTrack(client: SanityClient, assetId: string, trackId: string) {
+  return deleteAssetTrack(client, assetId, trackId)
+}
+
+/**
+ * Deletes an alternative audio track from an asset.
+ * The primary audio track can't be deleted.
+ */
+export function deleteAudioTrack(client: SanityClient, assetId: string, trackId: string) {
+  return deleteAssetTrack(client, assetId, trackId)
 }
 
 /**

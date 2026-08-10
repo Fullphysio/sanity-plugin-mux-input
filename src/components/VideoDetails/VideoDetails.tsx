@@ -29,7 +29,8 @@ import {
 import React, {useEffect, useState} from 'react'
 
 import {DIALOGS_Z_INDEX} from '../../util/constants'
-import {MuxPlaybackId, MuxTextTrack, PlaybackPolicy} from '../../util/types'
+import {MuxAudioTrack, MuxPlaybackId, MuxTextTrack, PlaybackPolicy} from '../../util/types'
+import AudioTracksManager from '../AudioTracksManager'
 import DownloadAssetDialog from '../DownloadAssetDialog'
 import FormField from '../FormField'
 import IconInfo from '../IconInfo'
@@ -245,18 +246,32 @@ const VideoDetails: React.FC<VideoDetailsProps> = (props) => {
           <Stack space={4} flex={1} sizing="border">
             <VideoPlayer asset={props.asset} autoPlay={props.asset.autoPlay || false} />
             {tab === 'details' && (
-              <TextTracksManager
-                asset={props.asset}
-                iconOnly
-                collapseTracks
-                tracks={
-                  displayInfo?.text_tracks ||
-                  props.asset.data?.tracks?.filter(
-                    (track): track is MuxTextTrack => track.type === 'text'
-                  ) ||
-                  []
-                }
-              />
+              <>
+                <TextTracksManager
+                  asset={props.asset}
+                  iconOnly
+                  collapseTracks
+                  tracks={
+                    displayInfo?.text_tracks ||
+                    props.asset.data?.tracks?.filter(
+                      (track): track is MuxTextTrack => track.type === 'text'
+                    ) ||
+                    []
+                  }
+                />
+                <AudioTracksManager
+                  asset={props.asset}
+                  iconOnly
+                  collapseTracks
+                  tracks={
+                    displayInfo?.audio_tracks ||
+                    props.asset.data?.tracks?.filter(
+                      (track): track is MuxAudioTrack => track.type === 'audio'
+                    ) ||
+                    []
+                  }
+                />
+              </>
             )}
           </Stack>
           <Stack space={4} flex={1} sizing="border">

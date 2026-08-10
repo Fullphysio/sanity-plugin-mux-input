@@ -18,6 +18,7 @@ import {useId, useRef, useState} from 'react'
 
 import {addTextTrackFromUrl, generateSubtitles, getAsset} from '../actions/assets'
 import {useClient} from '../hooks/useClient'
+import {getAudioTracks, isAlternativeAudioTrack} from '../util/audioTracks'
 import {extractErrorMessage, pollTrackStatus} from '../util/textTracks'
 import {type MuxTextTrack, SUPPORTED_MUX_LANGUAGES, type VideoAssetDocument} from '../util/types'
 
@@ -153,7 +154,9 @@ export default function AddCaptionDialog({asset, onAdd, onClose}: Props) {
     }
 
     const assetData = await getAsset(client, asset.assetId)
-    const audioTrack = assetData.data.tracks?.find((track) => track.type === 'audio')
+    const audioTracks = getAudioTracks(assetData.data.tracks)
+    // Subtitles are generated from the audio ingested with the video, not from alternative tracks
+    const audioTrack = audioTracks.find((track) => !isAlternativeAudioTrack(track)) || audioTracks[0]
 
     if (!audioTrack || !audioTrack.id) {
       toast.push({

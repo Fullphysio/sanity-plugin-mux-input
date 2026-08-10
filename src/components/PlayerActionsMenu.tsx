@@ -34,6 +34,7 @@ import {useResyncAsset} from '../hooks/useResyncAsset'
 import {getPlaybackPolicy} from '../util/getPlaybackPolicy'
 import type {MuxInputProps, PluginConfig, VideoAssetDocument} from '../util/types'
 import {FileInputMenuItem} from './FileInputMenuItem'
+import {AudioIcon} from './icons/Audio'
 
 const LockCard = styled(Card)`
   position: absolute;
@@ -142,6 +143,11 @@ function PlayerActionsMenu(
                   icon={TranslateIcon}
                   text="Captions"
                   onClick={() => setDialogState('edit-captions')}
+                />
+                <MenuItem
+                  icon={AudioIcon}
+                  text="Audio tracks"
+                  onClick={() => setDialogState('edit-audio-tracks')}
                 />
                 <MenuItem
                   icon={SyncIcon}

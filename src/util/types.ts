@@ -433,8 +433,24 @@ export interface MuxAudioTrack {
   type: 'audio'
   id: string
   duration?: number
-  max_channels: number
-  max_channel_layout: 'stereo' | string
+  // Not set yet while an alternative audio track is still preparing
+  max_channels?: number
+  max_channel_layout?: 'stereo' | string
+  // Only true for the audio track ingested from the asset's main input.
+  // The primary audio track can't be deleted.
+  primary?: boolean
+  // BCP 47 language code
+  language_code?: 'en' | 'en-US' | string
+  // The name of the track containing a human-readable description. The hls manifest will associate an audio track with this value
+  name?: 'English' | string
+  //  Max 255 characters
+  passthrough?: string
+  // Only set on tracks added through the create asset track API
+  status?: 'preparing' | 'ready' | 'errored'
+  error?: {
+    type: string
+    messages?: string[]
+  }
 }
 export interface MuxTextTrack {
   type: 'text'
