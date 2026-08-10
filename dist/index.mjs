@@ -1,6 +1,6 @@
 import { useClient as useClient$1, createHookFromObservableFactory, useDocumentStore, collate, useDocumentValues, truncateString, useFormattedDuration, SanityDefaultPreview, useTimeAgo, TextWithTone, isRecord, getPreviewStateObservable, getPreviewValueWithFallback, DocumentPreviewPresence, useDocumentPreviewStore, useSchema, useDocumentPresence, PreviewCard, useCurrentUser, isReference, useProjectId, useDataset, PatchEvent, set, unset, setIfMissing, LinearProgress, FormField as FormField$2, definePlugin } from "sanity";
 import { jsx, jsxs, Fragment } from "react/jsx-runtime";
-import { ErrorOutlineIcon, InfoOutlineIcon, RetryIcon, CheckmarkCircleIcon, RetrieveIcon, ChevronLeftIcon, ChevronRightIcon, SyncIcon, SortIcon, DownloadIcon, ResetIcon, UploadIcon, TranslateIcon, AddIcon, ChevronUpIcon, ChevronDownIcon, TrashIcon, EditIcon, WarningOutlineIcon, PublishIcon, DocumentIcon, RevertIcon, SearchIcon, ClockIcon, CropIcon, CalendarIcon, TagIcon, CheckmarkIcon, LockIcon, PlayIcon, PlugIcon, EllipsisHorizontalIcon, ImageIcon, WarningFilledIcon, DocumentVideoIcon } from "@sanity/icons";
+import { ErrorOutlineIcon, InfoOutlineIcon, RetryIcon, CheckmarkCircleIcon, RetrieveIcon, ChevronLeftIcon, ChevronRightIcon, SyncIcon, SortIcon, UploadIcon, TranslateIcon, AddIcon, ChevronUpIcon, ChevronDownIcon, TrashIcon, EditIcon, DownloadIcon, ResetIcon, WarningOutlineIcon, PublishIcon, DocumentIcon, RevertIcon, SearchIcon, ClockIcon, CropIcon, CalendarIcon, TagIcon, CheckmarkIcon, LockIcon, PlayIcon, PlugIcon, EllipsisHorizontalIcon, ImageIcon, WarningFilledIcon, DocumentVideoIcon } from "@sanity/icons";
 import { Dialog, Stack, Card, Text, Button, useTheme_v2, Flex, Box, TextInput, Checkbox, Code, Inline, Spinner, Heading, Label as Label$1, Radio, MenuButton, Menu, MenuItem, useToast, Autocomplete, Tooltip, TabList, Tab, TabPanel, Grid, useClickOutsideEvent, Popover, MenuDivider, rem } from "@sanity/ui";
 import React, { createContext, useContext, useState, useMemo, useCallback, useReducer, useId, memo, useRef, useEffect, Suspense, isValidElement, PureComponent, createElement, forwardRef } from "react";
 import compact from "lodash/compact.js";
@@ -686,6 +686,23 @@ function addTextTrackFromUrl(client, assetId, vttUrl, options) {
     }
   });
 }
+function addAudioTrackFromUrl(client, assetId, audioUrl, options) {
+  const { dataset } = client.config();
+  return client.request({
+    url: `/addons/mux/assets/${dataset}/${assetId}/tracks`,
+    withCredentials: !0,
+    method: "POST",
+    body: {
+      url: audioUrl,
+      type: "audio",
+      language_code: options.language_code,
+      ...options.name ? { name: options.name } : {}
+    },
+    headers: {
+      "Content-Type": "application/json"
+    }
+  });
+}
 function generateSubtitles(client, assetId, audioTrackId, options) {
   const { dataset } = client.config();
   return client.request({
@@ -705,13 +722,19 @@ function generateSubtitles(client, assetId, audioTrackId, options) {
     }
   });
 }
-function deleteTextTrack(client, assetId, trackId) {
+function deleteAssetTrack(client, assetId, trackId) {
   const { dataset } = client.config();
   return client.request({
     url: `/addons/mux/assets/${dataset}/${assetId}/tracks/${trackId}`,
     withCredentials: !0,
     method: "DELETE"
   });
+}
+function deleteTextTrack(client, assetId, trackId) {
+  return deleteAssetTrack(client, assetId, trackId);
+}
+function deleteAudioTrack(client, assetId, trackId) {
+  return deleteAssetTrack(client, assetId, trackId);
 }
 async function updateMasterAccess(client, assetId, masterAccess) {
   const fpCredentials = await client.fetch('*[_id == "secrets.fullphysio"][0]');
@@ -1677,6 +1700,1054 @@ const SpinnerBox = () => /* @__PURE__ */ jsx(
     children: /* @__PURE__ */ jsx(Spinner, {})
   }
 );
+function useResyncAsset(options) {
+  const client = useClient(), toast = useToast(), [resyncState, setResyncState] = useState("idle"), [resyncError, setResyncError] = useState(null), showToast = options?.showToast ?? !1, resyncAsset = useCallback(
+    async (asset) => {
+      if (!asset.assetId) {
+        showToast && toast.push({
+          title: "Cannot resync",
+          description: "Asset has no Mux ID",
+          status: "error"
+        }), options?.onError?.(new Error("Asset has no Mux ID"));
+        return;
+      }
+      if (!asset._id) {
+        showToast && toast.push({
+          title: "Cannot resync",
+          description: "Asset has no document ID",
+          status: "error"
+        }), options?.onError?.(new Error("Asset has no document ID"));
+        return;
+      }
+      setResyncState("syncing"), setResyncError(null);
+      try {
+        const muxData = (await getAsset(client, asset.assetId)).data, dataWithKeys = addKeysToMuxData(muxData);
+        return await client.patch(asset._id).set({
+          status: muxData.status,
+          data: dataWithKeys,
+          ...muxData.meta?.title && { filename: muxData.meta.title }
+        }).commit({ returnDocuments: !1 }), setResyncState("success"), showToast && toast.push({
+          title: "Asset synced",
+          description: "Data has been updated from Mux",
+          status: "success"
+        }), options?.onSuccess?.(muxData), muxData;
+      } catch (error) {
+        setResyncState("error"), setResyncError(error), console.error("Failed to refresh asset data:", error), showToast && toast.push({
+          title: "Sync failed",
+          description: "Could not sync asset from Mux",
+          status: "error"
+        }), options?.onError?.(error);
+        return;
+      }
+    },
+    [client, toast, options, showToast]
+  );
+  return {
+    resyncState,
+    resyncError,
+    resyncAsset,
+    isResyncing: resyncState === "syncing"
+  };
+}
+function isAlternativeAudioTrack(track) {
+  return track.primary !== !0;
+}
+function getAudioTracks(tracks) {
+  return (tracks || []).filter((track) => track.type === "audio");
+}
+function getAudioTrackStatus(track) {
+  return track.status || "ready";
+}
+async function pollAudioTrackStatus(options) {
+  const {
+    client,
+    assetId,
+    trackName,
+    trackLanguageCode,
+    knownTrackIds = [],
+    maxAttempts = 10,
+    onTrackFound,
+    onTrackErrored,
+    onTrackReady
+  } = options, trimmedName = trackName.trim(), trimmedLanguageCode = trackLanguageCode.trim();
+  let newTrack, attempts = 0, trackFound = !1;
+  const findTrack = (audioTracks) => {
+    const candidates = audioTracks.filter(
+      (track) => isAlternativeAudioTrack(track) && !knownTrackIds.includes(track.id)
+    );
+    let foundTrack = candidates.find(
+      (track) => track.name === trimmedName && track.language_code === trimmedLanguageCode
+    );
+    return foundTrack || (foundTrack = candidates.find((track) => track.language_code === trimmedLanguageCode)), !foundTrack && candidates.length > 0 && (foundTrack = candidates[candidates.length - 1]), foundTrack;
+  };
+  for (; attempts < maxAttempts; ) {
+    try {
+      attempts > 0 && await new Promise((resolve) => setTimeout(resolve, 1e3));
+      const assetData = await getAsset(client, assetId), foundTrack = findTrack(getAudioTracks(assetData.data.tracks));
+      if (!foundTrack) {
+        attempts++;
+        continue;
+      }
+      trackFound = !0, newTrack = foundTrack, onTrackFound && onTrackFound(foundTrack);
+      const status = getAudioTrackStatus(foundTrack);
+      if (status === "ready") {
+        onTrackReady && onTrackReady(foundTrack);
+        break;
+      }
+      if (status === "errored")
+        return onTrackErrored && onTrackErrored(foundTrack), {
+          track: foundTrack,
+          found: !0,
+          status: "errored"
+        };
+    } catch (error) {
+      console.error("Failed to fetch updated asset:", error);
+    }
+    attempts++;
+  }
+  return !newTrack || !trackFound ? {
+    track: void 0,
+    found: !1,
+    status: "not-found"
+  } : getAudioTrackStatus(newTrack) === "preparing" ? {
+    track: newTrack,
+    found: !0,
+    status: "preparing"
+  } : {
+    track: newTrack,
+    found: !0,
+    status: "ready"
+  };
+}
+function extractErrorMessage(error, defaultMessage = "Failed to process request") {
+  let message = "";
+  if (error && typeof error == "object") {
+    const err = error;
+    message = err.response?.body?.message || err.message || "";
+  } else typeof error == "string" && (message = error);
+  if (!message)
+    return defaultMessage;
+  const match = message.match(/\(([^)]+)\)/);
+  if (match && match[1])
+    return match[1];
+  if (message.includes("responded with")) {
+    const parts = message.split("(");
+    if (parts.length > 1)
+      return parts[parts.length - 1].replace(")", "").trim();
+  }
+  return message;
+}
+async function pollTrackStatus(options) {
+  const {
+    client,
+    assetId,
+    trackName,
+    trackLanguageCode,
+    maxAttempts = 10,
+    onTrackFound,
+    onTrackErrored,
+    onTrackReady
+  } = options, trimmedName = trackName.trim(), trimmedLanguageCode = trackLanguageCode.trim();
+  let newTrack, attempts = 0, trackFound = !1;
+  const findTrack = (textTracks) => {
+    let foundTrack = textTracks.find(
+      (track) => track.name === trimmedName && track.language_code === trimmedLanguageCode
+    );
+    return foundTrack || (foundTrack = textTracks.find((track) => track.language_code === trimmedLanguageCode)), !foundTrack && textTracks.length > 0 && (foundTrack = textTracks[textTracks.length - 1]), foundTrack;
+  };
+  for (; attempts < maxAttempts; ) {
+    try {
+      attempts > 0 && await new Promise((resolve) => setTimeout(resolve, 1e3));
+      const textTracks = (await getAsset(client, assetId)).data.tracks?.filter((track) => track.type === "text") || [], foundTrack = findTrack(textTracks);
+      if (!foundTrack) {
+        attempts++;
+        continue;
+      }
+      if (trackFound = !0, newTrack = foundTrack, onTrackFound && onTrackFound(foundTrack), foundTrack.status === "ready") {
+        onTrackReady && onTrackReady(foundTrack);
+        break;
+      }
+      if (foundTrack.status === "errored")
+        return onTrackErrored && onTrackErrored(foundTrack), {
+          track: foundTrack,
+          found: !0,
+          status: "errored"
+        };
+    } catch (error) {
+      console.error("Failed to fetch updated asset:", error);
+    }
+    attempts++;
+  }
+  return !newTrack || !trackFound ? {
+    track: void 0,
+    found: !1,
+    status: "not-found"
+  } : newTrack.status === "preparing" ? {
+    track: newTrack,
+    found: !0,
+    status: "preparing"
+  } : {
+    track: newTrack,
+    found: !0,
+    status: "ready"
+  };
+}
+async function downloadVttFile(client, asset, track) {
+  if (!track.id)
+    throw new Error("Track ID is missing");
+  if (track.status !== "ready")
+    throw new Error(`Track is not ready yet. Status: ${track.status}`);
+  if (!asset.assetId)
+    throw new Error("Asset ID is required");
+  const playbackId = getPlaybackId(asset);
+  if (!playbackId)
+    throw new Error("Playback ID is required");
+  const playbackPolicy = getPlaybackPolicy(asset)?.policy;
+  let downloadUrl = `https://stream.mux.com/${playbackId}/text/${track.id}.vtt`;
+  if (playbackPolicy === "signed" || playbackPolicy === "drm") {
+    const token = generateJwt(client, playbackId, "v");
+    downloadUrl += `?token=${token}`;
+  }
+  const response = await fetch(downloadUrl);
+  if (!response.ok)
+    throw new Error(`Failed to download file: ${response.statusText}`);
+  const blob = await response.blob(), blobUrl = URL.createObjectURL(blob), link = document.createElement("a");
+  link.href = blobUrl, link.download = `${asset.filename || "captions"}-${track.language_code || "en"}.vtt`, document.body.appendChild(link), link.click(), document.body.removeChild(link), URL.revokeObjectURL(blobUrl);
+}
+const LANGUAGE_OPTIONS$3 = LanguagesList.getAllCodes().map((code) => ({
+  value: code,
+  label: LanguagesList.getNativeName(code)
+})), AUDIO_FILE_ACCEPT = ".m4a,.mp3,.wav,.aac,.flac,.ogg,audio/*";
+function AddAudioTrackDialog({ asset, knownTrackIds = [], onAdd, onClose }) {
+  const client = useClient(), toast = useToast(), dialogId = `AddAudioTrackDialog${useId()}`, [audioUrl, setAudioUrl] = useState(""), [languageCode, setLanguageCode] = useState(""), [selectedLanguage, setSelectedLanguage] = useState(
+    null
+  ), [name2, setName] = useState(""), [isSubmitting, setIsSubmitting] = useState(!1), [selectedFile, setSelectedFile] = useState(null), fileInputRef = useRef(null), uploadAudioFile = async (file) => (await client.assets.upload("file", file, {
+    filename: file.name
+  })).url, handleAddTrackFromUrl = async () => {
+    if (!asset.assetId)
+      throw new Error("Asset ID is required");
+    const trimmedName = name2.trim(), trimmedLanguageCode = languageCode.trim();
+    let audioUrlToUse = audioUrl.trim();
+    if (selectedFile)
+      try {
+        audioUrlToUse = await uploadAudioFile(selectedFile);
+      } catch (uploadError) {
+        throw toast.push({
+          title: "Failed to upload audio file",
+          status: "error",
+          description: "Could not upload the audio file to Sanity. Please try again."
+        }), setIsSubmitting(!1), uploadError;
+      }
+    await addAudioTrackFromUrl(client, asset.assetId, audioUrlToUse, {
+      language_code: trimmedLanguageCode,
+      name: trimmedName
+    });
+    const result = await pollAudioTrackStatus({
+      client,
+      assetId: asset.assetId,
+      trackName: trimmedName,
+      trackLanguageCode: trimmedLanguageCode,
+      knownTrackIds,
+      onTrackErrored: (track) => {
+        const errorMessage = track.error?.messages?.[0] || track.error?.type || "The track failed to download from the provided URL";
+        toast.push({
+          title: "Audio track failed",
+          status: "error",
+          description: errorMessage
+        }), onAdd(track), onClose();
+      }
+    });
+    if (!result.found || !result.track) {
+      toast.push({
+        title: "Audio track may have been added",
+        status: "warning",
+        description: "The track was created but its status could not be determined. It may still be processing. Please refresh the page to see if it appears."
+      }), onClose();
+      return;
+    }
+    if (result.status !== "errored") {
+      if (result.status === "preparing") {
+        toast.push({
+          title: "Audio track is processing",
+          status: "info",
+          description: "The track was created and is being processed. It will appear in the list shortly."
+        }), onAdd(result.track), onClose();
+        return;
+      }
+      toast.push({
+        title: "Audio track added",
+        status: "success",
+        description: "Audio track added successfully"
+      }), onAdd(result.track), onClose();
+    }
+  }, handleSubmit = async () => {
+    if (!selectedFile && !audioUrl.trim()) {
+      toast.push({
+        title: "Audio file or URL required",
+        status: "error",
+        description: "Please select an audio file or enter an audio file URL"
+      });
+      return;
+    }
+    if (audioUrl.trim() && !selectedFile)
+      try {
+        new URL(audioUrl.trim());
+      } catch {
+        toast.push({
+          title: "Invalid URL",
+          status: "error",
+          description: "Please enter a valid URL (e.g., https://example.com/audio.m4a)"
+        });
+        return;
+      }
+    if (!name2.trim()) {
+      toast.push({
+        title: "Track name required",
+        status: "error",
+        description: "Please enter a name for this audio track"
+      });
+      return;
+    }
+    if (!languageCode.trim()) {
+      toast.push({
+        title: "Language code required",
+        status: "error",
+        description: "Please enter a language code (e.g., en, es, fr)"
+      });
+      return;
+    }
+    setIsSubmitting(!0);
+    try {
+      await handleAddTrackFromUrl();
+    } catch (error) {
+      toast.push({
+        title: "Failed to add audio track",
+        status: "error",
+        description: extractErrorMessage(error, "Failed to add audio track")
+      });
+    } finally {
+      setIsSubmitting(!1);
+    }
+  };
+  return /* @__PURE__ */ jsx(
+    Dialog,
+    {
+      id: dialogId,
+      header: "Add Audio Track",
+      onClose,
+      width: 1,
+      onClickOutside: onClose,
+      children: /* @__PURE__ */ jsxs(Stack, { padding: 4, space: 4, children: [
+        /* @__PURE__ */ jsxs(Stack, { space: 2, children: [
+          /* @__PURE__ */ jsxs(Card, { padding: 3, marginBottom: 2, tone: "transparent", border: !0, radius: 2, children: [
+            /* @__PURE__ */ jsxs(Flex, { align: "center", justify: "space-between", children: [
+              /* @__PURE__ */ jsx(Text, { size: 1, muted: !0, children: selectedFile ? `Selected: ${selectedFile.name}` : "No file selected" }),
+              /* @__PURE__ */ jsx(
+                Button,
+                {
+                  icon: UploadIcon,
+                  text: "Select File",
+                  mode: "ghost",
+                  tone: "primary",
+                  fontSize: 1,
+                  padding: 2,
+                  onClick: () => fileInputRef.current?.click(),
+                  disabled: isSubmitting
+                }
+              )
+            ] }),
+            /* @__PURE__ */ jsx(
+              "input",
+              {
+                ref: fileInputRef,
+                type: "file",
+                accept: AUDIO_FILE_ACCEPT,
+                style: { display: "none" },
+                onChange: (e) => {
+                  e.target.files && e.target.files.length > 0 && !isSubmitting && (setSelectedFile(e.target.files[0]), setAudioUrl(""));
+                }
+              }
+            )
+          ] }),
+          /* @__PURE__ */ jsx(Text, { size: 1, muted: !0, style: { textAlign: "center" }, children: "Or enter the audio file URL" }),
+          /* @__PURE__ */ jsxs(Stack, { space: 2, children: [
+            /* @__PURE__ */ jsx(Label$1, { htmlFor: "audio-url", children: "Audio File URL" }),
+            /* @__PURE__ */ jsx(
+              TextInput,
+              {
+                id: "audio-url",
+                placeholder: "https://example.com/audio.m4a",
+                value: audioUrl,
+                onChange: (e) => {
+                  setAudioUrl(e.currentTarget.value), setSelectedFile(null);
+                },
+                disabled: isSubmitting
+              }
+            ),
+            /* @__PURE__ */ jsx(Text, { size: 1, muted: !0, children: "M4A, MP3 and WAV files are supported" })
+          ] })
+        ] }),
+        /* @__PURE__ */ jsxs(Stack, { space: 2, children: [
+          /* @__PURE__ */ jsx(Label$1, { htmlFor: "audio-name", children: "Track name" }),
+          /* @__PURE__ */ jsx(
+            Autocomplete,
+            {
+              id: "audio-name",
+              value: selectedLanguage?.value || "",
+              onChange: (newValue) => {
+                const selected = LANGUAGE_OPTIONS$3.find((opt) => opt.value === newValue);
+                selected && (setSelectedLanguage(selected), setLanguageCode(selected.value), setName(selected.label));
+              },
+              options: LANGUAGE_OPTIONS$3,
+              icon: TranslateIcon,
+              placeholder: "Select language",
+              filterOption: (query, option) => option.label.toLowerCase().indexOf(query.toLowerCase()) > -1 || option.value.toLowerCase().indexOf(query.toLowerCase()) > -1,
+              openButton: !0,
+              renderValue: (value) => LANGUAGE_OPTIONS$3.find((l) => l.value === value)?.label || value,
+              renderOption: (option) => /* @__PURE__ */ jsx(Card, { "data-as": "button", padding: 3, radius: 2, tone: "inherit", children: /* @__PURE__ */ jsxs(Text, { size: 2, textOverflow: "ellipsis", children: [
+                option.label,
+                " (",
+                option.value,
+                ")"
+              ] }) }),
+              disabled: isSubmitting
+            }
+          )
+        ] }),
+        /* @__PURE__ */ jsxs(Stack, { space: 2, children: [
+          /* @__PURE__ */ jsx(Label$1, { htmlFor: "audio-language", children: "Language Code" }),
+          /* @__PURE__ */ jsx(
+            TextInput,
+            {
+              id: "audio-language",
+              placeholder: "en-US",
+              value: languageCode,
+              onChange: (e) => {
+                setLanguageCode(e.currentTarget.value), selectedLanguage && selectedLanguage.value !== e.currentTarget.value && (setSelectedLanguage(null), (!name2 || name2 === selectedLanguage.label) && setName(""));
+              },
+              disabled: isSubmitting
+            }
+          )
+        ] }),
+        /* @__PURE__ */ jsxs(Flex, { gap: 2, justify: "flex-end", marginTop: 2, children: [
+          /* @__PURE__ */ jsx(Button, { text: "Cancel", mode: "ghost", onClick: onClose, disabled: isSubmitting }),
+          /* @__PURE__ */ jsx(
+            Button,
+            {
+              text: "Add Audio Track",
+              tone: "primary",
+              icon: isSubmitting ? /* @__PURE__ */ jsx(
+                Spinner,
+                {
+                  style: {
+                    verticalAlign: "middle",
+                    display: "inline-block",
+                    marginBottom: "-3px",
+                    width: "1em",
+                    height: "1em",
+                    marginRight: "-6px"
+                  }
+                }
+              ) : /* @__PURE__ */ jsx(UploadIcon, {}),
+              onClick: handleSubmit,
+              disabled: isSubmitting
+            }
+          )
+        ] })
+      ] })
+    }
+  );
+}
+const LANGUAGE_OPTIONS$2 = LanguagesList.getAllCodes().map((code) => ({
+  value: code,
+  label: LanguagesList.getNativeName(code)
+}));
+function EditAudioTrackDialog({
+  asset,
+  track,
+  knownTrackIds = [],
+  onUpdate,
+  onClose
+}) {
+  const client = useClient(), toast = useToast(), dialogId = `EditAudioTrackDialog${useId()}`, [audioUrl, setAudioUrl] = useState(""), [languageCode, setLanguageCode] = useState(track.language_code || ""), [selectedLanguage, setSelectedLanguage] = useState(
+    () => {
+      const baseCode = track.language_code?.split("-")[0], found = LANGUAGE_OPTIONS$2.find(
+        (opt) => opt.value === track.language_code || opt.value === baseCode
+      );
+      if (found) return found;
+      if (track.name) {
+        const foundByName = LANGUAGE_OPTIONS$2.find((opt) => opt.label === track.name);
+        if (foundByName) return foundByName;
+      }
+      return null;
+    }
+  ), [name2, setName] = useState(track.name || ""), [isSubmitting, setIsSubmitting] = useState(!1), [selectedFile, setSelectedFile] = useState(null), fileInputRef = useRef(null);
+  useEffect(() => {
+    setLanguageCode(track.language_code || ""), setName(track.name || ""), setAudioUrl("");
+    const baseCode = track.language_code?.split("-")[0], foundByCode = LANGUAGE_OPTIONS$2.find(
+      (opt) => opt.value === track.language_code || opt.value === baseCode
+    ), foundByName = track.name ? LANGUAGE_OPTIONS$2.find((opt) => opt.label === track.name) : null;
+    setSelectedLanguage(foundByCode || foundByName || null);
+  }, [track, asset, client]);
+  const uploadAudioFile = async (file) => (await client.assets.upload("file", file, {
+    filename: file.name
+  })).url, refreshAssetData = async () => {
+    if (!(!asset._id || !asset.assetId))
+      try {
+        const latestAssetData = await getAsset(client, asset.assetId);
+        await client.patch(asset._id).set({ data: latestAssetData.data, status: latestAssetData.data.status }).commit();
+      } catch (refreshError) {
+        console.error("Failed to refresh asset data:", refreshError);
+      }
+  }, handleUpdateTrackWithNewUrl = async () => {
+    if (!asset.assetId)
+      throw new Error("Asset ID is required");
+    const trimmedName = name2.trim(), trimmedLanguageCode = languageCode.trim(), oldTrackId = track.id;
+    try {
+      await deleteAudioTrack(client, asset.assetId, oldTrackId);
+    } catch (deleteError) {
+      throw toast.push({
+        title: "Failed to delete old track",
+        status: "error",
+        description: "Could not delete the old track. Please try again or delete it manually."
+      }), setIsSubmitting(!1), deleteError;
+    }
+    let audioUrlToUse = audioUrl.trim();
+    if (selectedFile)
+      try {
+        audioUrlToUse = await uploadAudioFile(selectedFile);
+      } catch (uploadError) {
+        throw toast.push({
+          title: "Failed to upload audio file",
+          status: "error",
+          description: "Could not upload the audio file to Sanity. Please try again."
+        }), setIsSubmitting(!1), uploadError;
+      }
+    try {
+      await addAudioTrackFromUrl(client, asset.assetId, audioUrlToUse, {
+        language_code: trimmedLanguageCode,
+        name: trimmedName
+      });
+    } catch (error) {
+      throw toast.push({
+        title: "Failed to update audio track",
+        status: "error",
+        description: extractErrorMessage(error, "Failed to update audio track")
+      }), setIsSubmitting(!1), error;
+    }
+    const result = await pollAudioTrackStatus({
+      client,
+      assetId: asset.assetId,
+      trackName: trimmedName,
+      trackLanguageCode: trimmedLanguageCode,
+      knownTrackIds: knownTrackIds.filter((id) => id !== oldTrackId),
+      onTrackErrored: async (erroredTrack) => {
+        const errorMessage = erroredTrack.error?.messages?.[0] || erroredTrack.error?.type || "The track failed to download from the provided URL";
+        toast.push({
+          title: "Audio track failed",
+          status: "error",
+          description: errorMessage
+        }), await refreshAssetData(), onUpdate(erroredTrack, oldTrackId), setIsSubmitting(!1);
+      }
+    });
+    if (!result.found || !result.track) {
+      toast.push({
+        title: "Audio track may have been updated",
+        status: "warning",
+        description: "The track was updated but its status could not be determined. It may still be processing. Please refresh the page to see if it appears."
+      }), setIsSubmitting(!1);
+      return;
+    }
+    result.status !== "errored" && (await refreshAssetData(), result.status === "preparing" ? toast.push({
+      title: "Audio track is processing",
+      status: "info",
+      description: "The track was updated and is being processed. It will appear in the list shortly."
+    }) : toast.push({
+      title: "Audio track updated",
+      status: "success",
+      description: "Audio track updated successfully"
+    }), onUpdate(result.track, oldTrackId), setIsSubmitting(!1));
+  }, handleSubmit = async () => {
+    if (!name2.trim()) {
+      toast.push({
+        title: "Track name required",
+        status: "error",
+        description: "Please enter a name for this audio track"
+      });
+      return;
+    }
+    if (!languageCode.trim()) {
+      toast.push({
+        title: "Language code required",
+        status: "error",
+        description: "Please enter a language code (e.g., en, es, fr)"
+      });
+      return;
+    }
+    setIsSubmitting(!0);
+    try {
+      if (!asset.assetId)
+        throw new Error("Asset ID is required");
+      if (!selectedFile && !audioUrl.trim()) {
+        toast.push({
+          title: "No changes",
+          status: "info",
+          description: 'Please provide a new audio file or URL using the "Replace" button or URL field to update the track.'
+        }), setIsSubmitting(!1);
+        return;
+      }
+      if (!selectedFile && audioUrl.trim())
+        try {
+          new URL(audioUrl.trim());
+        } catch {
+          toast.push({
+            title: "Invalid URL",
+            status: "error",
+            description: "Please enter a valid URL (e.g., https://example.com/audio.m4a)"
+          }), setIsSubmitting(!1);
+          return;
+        }
+      await handleUpdateTrackWithNewUrl(), onClose();
+    } catch (error) {
+      toast.push({
+        title: "Failed to update audio track",
+        status: "error",
+        description: error instanceof Error ? error.message : "Please try again"
+      });
+    } finally {
+      setIsSubmitting(!1);
+    }
+  };
+  return /* @__PURE__ */ jsx(
+    Dialog,
+    {
+      id: dialogId,
+      header: "Edit Audio Track",
+      onClose,
+      width: 1,
+      onClickOutside: onClose,
+      children: /* @__PURE__ */ jsxs(Stack, { padding: 4, space: 4, children: [
+        /* @__PURE__ */ jsxs(Stack, { space: 2, children: [
+          /* @__PURE__ */ jsxs(Card, { padding: 3, marginBottom: 2, tone: "transparent", border: !0, radius: 2, children: [
+            /* @__PURE__ */ jsxs(Flex, { align: "center", justify: "space-between", children: [
+              /* @__PURE__ */ jsx(Text, { children: track.name || track.language_code || "Untitled audio track" }),
+              /* @__PURE__ */ jsx(
+                Button,
+                {
+                  icon: UploadIcon,
+                  text: "Replace",
+                  mode: "ghost",
+                  tone: "primary",
+                  fontSize: 1,
+                  padding: 2,
+                  onClick: () => fileInputRef.current?.click(),
+                  disabled: isSubmitting
+                }
+              )
+            ] }),
+            /* @__PURE__ */ jsx(
+              "input",
+              {
+                ref: fileInputRef,
+                type: "file",
+                accept: AUDIO_FILE_ACCEPT,
+                style: { display: "none" },
+                onChange: (e) => {
+                  e.target.files && e.target.files.length > 0 && !isSubmitting && (setSelectedFile(e.target.files[0]), setAudioUrl(""));
+                }
+              }
+            ),
+            selectedFile && /* @__PURE__ */ jsxs(Text, { size: 1, muted: !0, style: { marginTop: 8 }, children: [
+              "Selected: ",
+              selectedFile.name
+            ] })
+          ] }),
+          /* @__PURE__ */ jsxs(Stack, { space: 2, children: [
+            /* @__PURE__ */ jsx(Label$1, { htmlFor: "audio-url", children: "Audio File URL" }),
+            /* @__PURE__ */ jsx(
+              TextInput,
+              {
+                id: "audio-url",
+                placeholder: "https://example.com/audio.m4a",
+                value: audioUrl,
+                onChange: (e) => {
+                  setAudioUrl(e.currentTarget.value), setSelectedFile(null);
+                },
+                disabled: isSubmitting
+              }
+            ),
+            /* @__PURE__ */ jsx(Text, { size: 1, muted: !0, children: "Mux can't change an existing track, so the track is replaced with a new audio file" })
+          ] })
+        ] }),
+        /* @__PURE__ */ jsxs(Stack, { space: 2, children: [
+          /* @__PURE__ */ jsx(Label$1, { htmlFor: "audio-name", children: "Track name" }),
+          /* @__PURE__ */ jsx(
+            Autocomplete,
+            {
+              id: "audio-name",
+              value: selectedLanguage?.value || "",
+              onChange: (newValue) => {
+                const selected = LANGUAGE_OPTIONS$2.find((opt) => opt.value === newValue);
+                selected && (setSelectedLanguage(selected), setLanguageCode(selected.value), setName(selected.label));
+              },
+              options: LANGUAGE_OPTIONS$2,
+              icon: TranslateIcon,
+              placeholder: "Select language",
+              filterOption: (query, option) => option.label.toLowerCase().indexOf(query.toLowerCase()) > -1 || option.value.toLowerCase().indexOf(query.toLowerCase()) > -1,
+              openButton: !0,
+              renderValue: (value) => LANGUAGE_OPTIONS$2.find((l) => l.value === value)?.label || value,
+              renderOption: (option) => /* @__PURE__ */ jsx(Card, { "data-as": "button", padding: 3, radius: 2, tone: "inherit", children: /* @__PURE__ */ jsxs(Text, { size: 2, textOverflow: "ellipsis", children: [
+                option.label,
+                " (",
+                option.value,
+                ")"
+              ] }) }),
+              disabled: isSubmitting
+            }
+          )
+        ] }),
+        /* @__PURE__ */ jsxs(Stack, { space: 2, children: [
+          /* @__PURE__ */ jsx(Label$1, { htmlFor: "audio-language", children: "Language Code" }),
+          /* @__PURE__ */ jsx(
+            TextInput,
+            {
+              id: "audio-language",
+              placeholder: "en-US",
+              value: languageCode,
+              onChange: (e) => {
+                setLanguageCode(e.currentTarget.value), selectedLanguage && selectedLanguage.value !== e.currentTarget.value && (setSelectedLanguage(null), (!name2 || name2 === selectedLanguage.label) && setName(""));
+              },
+              disabled: isSubmitting
+            }
+          )
+        ] }),
+        /* @__PURE__ */ jsxs(Flex, { gap: 2, justify: "flex-end", marginTop: 2, children: [
+          /* @__PURE__ */ jsx(Button, { text: "Cancel", mode: "ghost", onClick: onClose, disabled: isSubmitting }),
+          /* @__PURE__ */ jsx(
+            Button,
+            {
+              text: "Update Audio Track",
+              tone: "primary",
+              icon: isSubmitting ? /* @__PURE__ */ jsx(
+                Spinner,
+                {
+                  style: {
+                    verticalAlign: "middle",
+                    display: "inline-block",
+                    marginBottom: "-3px",
+                    width: "1em",
+                    height: "1em",
+                    marginRight: "-6px"
+                  }
+                }
+              ) : UploadIcon,
+              onClick: handleSubmit,
+              disabled: isSubmitting
+            }
+          )
+        ] })
+      ] })
+    }
+  );
+}
+function withoutTrackIds(tracks, trackIds) {
+  return tracks.filter((track) => !trackIds.includes(track.id));
+}
+function TrackCard$1({
+  track,
+  iconOnly,
+  deletingTrackId,
+  trackToEdit,
+  setTrackToEdit,
+  setTrackToDelete
+}) {
+  const status = getAudioTrackStatus(track), isPrimary = !isAlternativeAudioTrack(track), isDisabled = (action) => action === "edit" ? deletingTrackId === track.id || trackToEdit?.id === track.id : deletingTrackId !== null || trackToEdit?.id === track.id, renderActionButtons = () => status === "preparing" ? /* @__PURE__ */ jsxs(Flex, { align: "center", gap: 2, children: [
+    /* @__PURE__ */ jsx(
+      Spinner,
+      {
+        muted: !0,
+        style: {
+          width: "0.75em",
+          height: "0.75em",
+          verticalAlign: "middle",
+          display: "inline-block",
+          marginBottom: "-2px"
+        }
+      }
+    ),
+    /* @__PURE__ */ jsx(Text, { size: 1, muted: !0, children: "Processing..." })
+  ] }) : isPrimary ? null : /* @__PURE__ */ jsxs(Flex, { gap: 2, children: [
+    /* @__PURE__ */ jsx(
+      Button,
+      {
+        icon: /* @__PURE__ */ jsx(EditIcon, {}),
+        text: iconOnly ? void 0 : "Edit",
+        mode: "ghost",
+        tone: "primary",
+        fontSize: 1,
+        padding: 2,
+        disabled: isDisabled("edit"),
+        onClick: () => setTrackToEdit(track),
+        title: "Edit"
+      }
+    ),
+    /* @__PURE__ */ jsx(
+      Button,
+      {
+        icon: deletingTrackId === track.id ? /* @__PURE__ */ jsx(
+          Spinner,
+          {
+            style: {
+              verticalAlign: "middle",
+              display: "inline-block",
+              marginTop: "-2px",
+              width: "0.5em",
+              height: "0.5em"
+            }
+          }
+        ) : /* @__PURE__ */ jsx(TrashIcon, {}),
+        text: iconOnly ? void 0 : "Delete",
+        mode: "ghost",
+        tone: "critical",
+        fontSize: 1,
+        padding: 2,
+        disabled: isDisabled("delete"),
+        onClick: () => setTrackToDelete(track),
+        title: "Delete"
+      }
+    )
+  ] });
+  return /* @__PURE__ */ jsx(Card, { padding: 3, radius: 2, tone: status === "errored" ? "caution" : "transparent", border: !0, children: /* @__PURE__ */ jsxs(Flex, { align: "center", justify: "space-between", gap: 3, children: [
+    /* @__PURE__ */ jsxs(Stack, { space: 2, flex: 1, children: [
+      /* @__PURE__ */ jsxs(Flex, { align: "center", gap: 2, children: [
+        /* @__PURE__ */ jsx(Text, { weight: "semibold", children: track.name || (isPrimary ? "Default" : "Untitled") }),
+        /* @__PURE__ */ jsxs(Text, { size: 1, muted: !0, children: [
+          "(",
+          isPrimary ? "Primary" : "Alternative",
+          ")"
+        ] }),
+        status === "errored" && /* @__PURE__ */ jsx(
+          ErrorOutlineIcon,
+          {
+            style: { color: "var(--card-critical-color)" },
+            "aria-label": "Error",
+            fontSize: 20
+          }
+        )
+      ] }),
+      track.language_code && /* @__PURE__ */ jsxs(Text, { size: 1, muted: !0, children: [
+        "Language: ",
+        track.language_code
+      ] }),
+      status === "errored" && track.error && /* @__PURE__ */ jsx(Text, { size: 1, style: { color: "var(--card-critical-color)" }, children: track.error.messages?.[0] || track.error.type || "Failed to process track" })
+    ] }),
+    renderActionButtons()
+  ] }) });
+}
+function AudioTracksManager({
+  asset,
+  iconOnly = !1,
+  tracks: propTracks,
+  collapseTracks = !1
+}) {
+  const client = useClient(), toast = useToast(), dialogId = `DeleteAudioTrackDialog${useId()}`, { resyncAsset } = useResyncAsset(), [deletingTrackId, setDeletingTrackId] = useState(null), [addedTracks, setAddedTracks] = useState([]), [trackActivityOrder, setTrackActivityOrder] = useState(/* @__PURE__ */ new Map()), [trackToDelete, setTrackToDelete] = useState(null), [trackToEdit, setTrackToEdit] = useState(null), [showAddDialog, setShowAddDialog] = useState(!1), [isExpanded, setIsExpanded] = useState(!1), MAX_VISIBLE_TRACKS = 4, activeTracks = (propTracks || getAudioTracks(asset.data?.tracks)).filter((track) => !!track.id), allTracks = [
+    ...activeTracks,
+    ...addedTracks.filter(
+      (addedTrack) => addedTrack.id && !activeTracks.some((realTrack) => realTrack.id === addedTrack.id)
+    )
+  ], knownTrackIds = allTracks.map((track) => track.id), hasPreparingTracks = allTracks.some((track) => getAudioTrackStatus(track) === "preparing");
+  useEffect(() => {
+    if (!hasPreparingTracks || !asset.assetId || !asset._id)
+      return;
+    const interval = setInterval(async () => {
+      try {
+        const muxData = await resyncAsset(asset);
+        if (!muxData) return;
+        const fetchedTrackIds = getAudioTracks(muxData.tracks).map((track) => track.id);
+        setAddedTracks((prev) => withoutTrackIds(prev, fetchedTrackIds));
+      } catch (error) {
+        console.error("Failed to refresh asset data:", error);
+      }
+    }, 3e3);
+    return () => clearInterval(interval);
+  }, [hasPreparingTracks, asset, resyncAsset]);
+  const visibleTracks = [...allTracks].sort((a2, b) => {
+    const orderA = trackActivityOrder.get(a2.id) || 0, orderB = trackActivityOrder.get(b.id) || 0;
+    if (orderA > 0 && orderB > 0)
+      return orderB - orderA;
+    if (orderA > 0) return -1;
+    if (orderB > 0) return 1;
+    const aIsPreparing = getAudioTrackStatus(a2) === "preparing", bIsPreparing = getAudioTrackStatus(b) === "preparing";
+    return aIsPreparing && !bIsPreparing ? -1 : !aIsPreparing && bIsPreparing ? 1 : 0;
+  }), confirmDelete = async () => {
+    if (!trackToDelete || !trackToDelete.id) return;
+    const track = trackToDelete;
+    setTrackToDelete(null), setDeletingTrackId(track.id);
+    try {
+      if (!asset.assetId)
+        throw new Error("Asset ID is required");
+      await deleteAudioTrack(client, asset.assetId, track.id), await resyncAsset(asset), toast.push({
+        title: "Successfully deleted audio track",
+        status: "success"
+      }), setAddedTracks((prev) => prev.filter((t) => t.id !== track.id)), setTrackActivityOrder((prev) => {
+        const newMap = new Map(prev);
+        return newMap.delete(track.id), newMap;
+      });
+    } catch (error) {
+      toast.push({
+        title: "Failed to delete audio track",
+        status: "error",
+        description: error instanceof Error ? error.message : "Please try again"
+      });
+    } finally {
+      setDeletingTrackId(null);
+    }
+  }, handleAddTrack = async (track) => {
+    setAddedTracks((prev) => [...prev, track]), setTrackActivityOrder((prev) => {
+      const newMap = new Map(prev);
+      return newMap.set(track.id, prev.size + 1), newMap;
+    }), setShowAddDialog(!1), await resyncAsset(asset);
+  }, handleUpdateTrack = async (updatedTrack, oldTrackId) => {
+    oldTrackId && (setAddedTracks((prev) => prev.filter((t) => t.id !== oldTrackId)), setTrackActivityOrder((prev) => {
+      const newMap = new Map(prev);
+      return newMap.delete(oldTrackId), newMap;
+    }));
+    const isAddedTrack = addedTracks.some((t) => t.id === updatedTrack.id);
+    setAddedTracks(isAddedTrack ? (prev) => prev.map((t) => t.id === updatedTrack.id ? updatedTrack : t) : (prev) => [...prev, updatedTrack]), setTrackActivityOrder((prev) => {
+      const newMap = new Map(prev);
+      return newMap.set(updatedTrack.id, prev.size + 1), newMap;
+    }), setTrackToEdit(null), await resyncAsset(asset);
+  };
+  if (visibleTracks.length === 0 && !showAddDialog)
+    return /* @__PURE__ */ jsxs(Stack, { space: 3, children: [
+      /* @__PURE__ */ jsx(Flex, { justify: "flex-end", children: /* @__PURE__ */ jsx(
+        Button,
+        {
+          icon: AddIcon,
+          text: "Add Audio Track",
+          tone: "primary",
+          onClick: () => setShowAddDialog(!0)
+        }
+      ) }),
+      /* @__PURE__ */ jsx(Card, { padding: 4, radius: 2, tone: "transparent", border: !0, children: /* @__PURE__ */ jsx(Text, { size: 1, muted: !0, children: "No audio tracks available. Add an alternative audio track to offer this video in another language." }) }),
+      showAddDialog && /* @__PURE__ */ jsx(
+        AddAudioTrackDialog,
+        {
+          asset,
+          knownTrackIds,
+          onAdd: handleAddTrack,
+          onClose: () => setShowAddDialog(!1)
+        }
+      )
+    ] });
+  const displayedTracks = collapseTracks && !isExpanded ? visibleTracks.slice(0, MAX_VISIBLE_TRACKS) : visibleTracks, hasMoreTracks = collapseTracks && visibleTracks.length > MAX_VISIBLE_TRACKS;
+  return /* @__PURE__ */ jsxs(Stack, { space: 3, children: [
+    /* @__PURE__ */ jsx(Flex, { justify: "flex-end", children: /* @__PURE__ */ jsx(
+      Button,
+      {
+        icon: AddIcon,
+        text: "Add Audio Track",
+        tone: "primary",
+        onClick: () => setShowAddDialog(!0)
+      }
+    ) }),
+    displayedTracks.map((track) => /* @__PURE__ */ jsx(
+      TrackCard$1,
+      {
+        track,
+        iconOnly,
+        deletingTrackId,
+        trackToEdit,
+        setTrackToEdit,
+        setTrackToDelete
+      },
+      track.id
+    )),
+    hasMoreTracks && /* @__PURE__ */ jsx(Flex, { justify: "center", children: /* @__PURE__ */ jsx(
+      Button,
+      {
+        icon: isExpanded ? ChevronUpIcon : ChevronDownIcon,
+        text: isExpanded ? "Show less" : `Show ${visibleTracks.length - MAX_VISIBLE_TRACKS} more`,
+        mode: "ghost",
+        tone: "primary",
+        onClick: () => setIsExpanded(!isExpanded)
+      }
+    ) }),
+    trackToDelete && /* @__PURE__ */ jsx(
+      Dialog,
+      {
+        animate: !0,
+        id: dialogId,
+        header: "Delete track",
+        onClose: () => setTrackToDelete(null),
+        onClickOutside: () => setTrackToDelete(null),
+        width: 1,
+        children: /* @__PURE__ */ jsx(
+          Card,
+          {
+            padding: 3,
+            style: {
+              minHeight: "150px",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center"
+            },
+            children: /* @__PURE__ */ jsxs(Stack, { space: 3, children: [
+              /* @__PURE__ */ jsxs(Heading, { size: 2, children: [
+                'Are you sure you want to delete "',
+                trackToDelete.name || trackToDelete.language_code || "Untitled",
+                '"?'
+              ] }),
+              /* @__PURE__ */ jsx(Text, { size: 2, children: "This action is irreversible" }),
+              /* @__PURE__ */ jsx(Stack, { space: 4, marginY: 4, children: /* @__PURE__ */ jsx(Box, { children: /* @__PURE__ */ jsx(
+                Button,
+                {
+                  icon: deletingTrackId === trackToDelete.id ? /* @__PURE__ */ jsx(
+                    Spinner,
+                    {
+                      style: {
+                        verticalAlign: "middle",
+                        display: "inline-block",
+                        marginTop: "-2px",
+                        width: "0.5em",
+                        height: "0.5em"
+                      }
+                    }
+                  ) : /* @__PURE__ */ jsx(TrashIcon, {}),
+                  fontSize: 2,
+                  padding: 3,
+                  text: "Delete track",
+                  tone: "critical",
+                  onClick: confirmDelete,
+                  disabled: deletingTrackId !== null
+                }
+              ) }) })
+            ] })
+          }
+        )
+      }
+    ),
+    showAddDialog && /* @__PURE__ */ jsx(
+      AddAudioTrackDialog,
+      {
+        asset,
+        knownTrackIds,
+        onAdd: handleAddTrack,
+        onClose: () => setShowAddDialog(!1)
+      }
+    ),
+    trackToEdit && /* @__PURE__ */ jsx(
+      EditAudioTrackDialog,
+      {
+        asset,
+        track: trackToEdit,
+        knownTrackIds,
+        onUpdate: handleUpdateTrack,
+        onClose: () => setTrackToEdit(null)
+      }
+    )
+  ] });
+}
 async function enableMasterAccess(client, assetId) {
   try {
     return (await testSecrets(client))?.status ? (await updateMasterAccess(client, assetId, "temporary"), !0) : !1;
@@ -1874,150 +2945,6 @@ function StopWatchIcon(props) {
     }
   );
 }
-function useResyncAsset(options) {
-  const client = useClient(), toast = useToast(), [resyncState, setResyncState] = useState("idle"), [resyncError, setResyncError] = useState(null), showToast = options?.showToast ?? !1, resyncAsset = useCallback(
-    async (asset) => {
-      if (!asset.assetId) {
-        showToast && toast.push({
-          title: "Cannot resync",
-          description: "Asset has no Mux ID",
-          status: "error"
-        }), options?.onError?.(new Error("Asset has no Mux ID"));
-        return;
-      }
-      if (!asset._id) {
-        showToast && toast.push({
-          title: "Cannot resync",
-          description: "Asset has no document ID",
-          status: "error"
-        }), options?.onError?.(new Error("Asset has no document ID"));
-        return;
-      }
-      setResyncState("syncing"), setResyncError(null);
-      try {
-        const muxData = (await getAsset(client, asset.assetId)).data, dataWithKeys = addKeysToMuxData(muxData);
-        return await client.patch(asset._id).set({
-          status: muxData.status,
-          data: dataWithKeys,
-          ...muxData.meta?.title && { filename: muxData.meta.title }
-        }).commit({ returnDocuments: !1 }), setResyncState("success"), showToast && toast.push({
-          title: "Asset synced",
-          description: "Data has been updated from Mux",
-          status: "success"
-        }), options?.onSuccess?.(muxData), muxData;
-      } catch (error) {
-        setResyncState("error"), setResyncError(error), console.error("Failed to refresh asset data:", error), showToast && toast.push({
-          title: "Sync failed",
-          description: "Could not sync asset from Mux",
-          status: "error"
-        }), options?.onError?.(error);
-        return;
-      }
-    },
-    [client, toast, options, showToast]
-  );
-  return {
-    resyncState,
-    resyncError,
-    resyncAsset,
-    isResyncing: resyncState === "syncing"
-  };
-}
-function extractErrorMessage(error, defaultMessage = "Failed to process request") {
-  let message = "";
-  if (error && typeof error == "object") {
-    const err = error;
-    message = err.response?.body?.message || err.message || "";
-  } else typeof error == "string" && (message = error);
-  if (!message)
-    return defaultMessage;
-  const match = message.match(/\(([^)]+)\)/);
-  if (match && match[1])
-    return match[1];
-  if (message.includes("responded with")) {
-    const parts = message.split("(");
-    if (parts.length > 1)
-      return parts[parts.length - 1].replace(")", "").trim();
-  }
-  return message;
-}
-async function pollTrackStatus(options) {
-  const {
-    client,
-    assetId,
-    trackName,
-    trackLanguageCode,
-    maxAttempts = 10,
-    onTrackFound,
-    onTrackErrored,
-    onTrackReady
-  } = options, trimmedName = trackName.trim(), trimmedLanguageCode = trackLanguageCode.trim();
-  let newTrack, attempts = 0, trackFound = !1;
-  const findTrack = (textTracks) => {
-    let foundTrack = textTracks.find(
-      (track) => track.name === trimmedName && track.language_code === trimmedLanguageCode
-    );
-    return foundTrack || (foundTrack = textTracks.find((track) => track.language_code === trimmedLanguageCode)), !foundTrack && textTracks.length > 0 && (foundTrack = textTracks[textTracks.length - 1]), foundTrack;
-  };
-  for (; attempts < maxAttempts; ) {
-    try {
-      attempts > 0 && await new Promise((resolve) => setTimeout(resolve, 1e3));
-      const textTracks = (await getAsset(client, assetId)).data.tracks?.filter((track) => track.type === "text") || [], foundTrack = findTrack(textTracks);
-      if (!foundTrack) {
-        attempts++;
-        continue;
-      }
-      if (trackFound = !0, newTrack = foundTrack, onTrackFound && onTrackFound(foundTrack), foundTrack.status === "ready") {
-        onTrackReady && onTrackReady(foundTrack);
-        break;
-      }
-      if (foundTrack.status === "errored")
-        return onTrackErrored && onTrackErrored(foundTrack), {
-          track: foundTrack,
-          found: !0,
-          status: "errored"
-        };
-    } catch (error) {
-      console.error("Failed to fetch updated asset:", error);
-    }
-    attempts++;
-  }
-  return !newTrack || !trackFound ? {
-    track: void 0,
-    found: !1,
-    status: "not-found"
-  } : newTrack.status === "preparing" ? {
-    track: newTrack,
-    found: !0,
-    status: "preparing"
-  } : {
-    track: newTrack,
-    found: !0,
-    status: "ready"
-  };
-}
-async function downloadVttFile(client, asset, track) {
-  if (!track.id)
-    throw new Error("Track ID is missing");
-  if (track.status !== "ready")
-    throw new Error(`Track is not ready yet. Status: ${track.status}`);
-  if (!asset.assetId)
-    throw new Error("Asset ID is required");
-  const playbackId = getPlaybackId(asset);
-  if (!playbackId)
-    throw new Error("Playback ID is required");
-  const playbackPolicy = getPlaybackPolicy(asset)?.policy;
-  let downloadUrl = `https://stream.mux.com/${playbackId}/text/${track.id}.vtt`;
-  if (playbackPolicy === "signed" || playbackPolicy === "drm") {
-    const token = generateJwt(client, playbackId, "v");
-    downloadUrl += `?token=${token}`;
-  }
-  const response = await fetch(downloadUrl);
-  if (!response.ok)
-    throw new Error(`Failed to download file: ${response.statusText}`);
-  const blob = await response.blob(), blobUrl = URL.createObjectURL(blob), link = document.createElement("a");
-  link.href = blobUrl, link.download = `${asset.filename || "captions"}-${track.language_code || "en"}.vtt`, document.body.appendChild(link), link.click(), document.body.removeChild(link), URL.revokeObjectURL(blobUrl);
-}
 const SUPPORTED_MUX_LANGUAGES = [
   { label: "English", code: "en", state: "Stable" },
   { label: "Spanish", code: "es", state: "Stable" },
@@ -2120,7 +3047,7 @@ function AddCaptionDialog({ asset, onAdd, onClose }) {
   }, handleGenerateSubtitles = async () => {
     if (!asset.assetId)
       throw new Error("Asset ID is required");
-    const audioTrack = (await getAsset(client, asset.assetId)).data.tracks?.find((track) => track.type === "audio");
+    const assetData = await getAsset(client, asset.assetId), audioTracks = getAudioTracks(assetData.data.tracks), audioTrack = audioTracks.find((track) => !isAlternativeAudioTrack(track)) || audioTracks[0];
     if (!audioTrack || !audioTrack.id)
       throw toast.push({
         title: "No audio track found",
@@ -3116,6 +4043,19 @@ function getVideoSrc({ client, muxPlaybackId: muxPlaybackId2 }) {
   }
   return `https://stream.mux.com/${muxPlaybackId2.id}.m3u8?${searchParams}`;
 }
+function AudioTracksDialog({ asset }) {
+  const { setDialogState } = useDialogStateContext(), dialogId = `AudioTracksDialog${useId()}`;
+  return /* @__PURE__ */ jsx(
+    Dialog,
+    {
+      id: dialogId,
+      header: "Edit Audio Tracks",
+      onClose: () => setDialogState(!1),
+      width: 1,
+      children: /* @__PURE__ */ jsx(Stack, { padding: 4, children: /* @__PURE__ */ jsx(AudioTracksManager, { asset }) })
+    }
+  );
+}
 function CaptionsDialog({ asset }) {
   const { setDialogState } = useDialogStateContext(), dialogId = `CaptionsDialog${useId()}`;
   return /* @__PURE__ */ jsx(Dialog, { id: dialogId, header: "Edit Captions", onClose: () => setDialogState(!1), width: 1, children: /* @__PURE__ */ jsx(Stack, { padding: 4, children: /* @__PURE__ */ jsx(TextTracksManager, { asset }) }) });
@@ -3356,6 +4296,7 @@ function VideoPlayer({
     ),
     dialogState === "edit-thumbnail" && /* @__PURE__ */ jsx(EditThumbnailDialog, { asset, currentTime: muxPlayer?.current?.currentTime }),
     dialogState === "edit-captions" && /* @__PURE__ */ jsx(CaptionsDialog, { asset }),
+    dialogState === "edit-audio-tracks" && /* @__PURE__ */ jsx(AudioTracksDialog, { asset }),
     dialogState === "download-asset" && /* @__PURE__ */ jsx(DownloadAssetDialog, { asset })
   ] });
 }
@@ -3630,7 +4571,8 @@ function getVideoMetadata(doc) {
     aspect_ratio: doc.data?.aspect_ratio,
     max_stored_resolution: doc.data?.max_stored_resolution,
     max_stored_frame_rate: doc.data?.max_stored_frame_rate,
-    text_tracks: doc.data?.tracks?.filter((track) => track.type === "text") || []
+    text_tracks: doc.data?.tracks?.filter((track) => track.type === "text") || [],
+    audio_tracks: doc.data?.tracks?.filter((track) => track.type === "audio") || []
   };
 }
 function useVideoDetails(props) {
@@ -3870,17 +4812,30 @@ const AssetInput = (props) => /* @__PURE__ */ jsx(FormField$1, { title: props.la
                 children: [
                   /* @__PURE__ */ jsxs(Stack, { space: 4, flex: 1, sizing: "border", children: [
                     /* @__PURE__ */ jsx(VideoPlayer, { asset: props.asset, autoPlay: props.asset.autoPlay || !1 }),
-                    tab === "details" && /* @__PURE__ */ jsx(
-                      TextTracksManager,
-                      {
-                        asset: props.asset,
-                        iconOnly: !0,
-                        collapseTracks: !0,
-                        tracks: displayInfo?.text_tracks || props.asset.data?.tracks?.filter(
-                          (track) => track.type === "text"
-                        ) || []
-                      }
-                    )
+                    tab === "details" && /* @__PURE__ */ jsxs(Fragment, { children: [
+                      /* @__PURE__ */ jsx(
+                        TextTracksManager,
+                        {
+                          asset: props.asset,
+                          iconOnly: !0,
+                          collapseTracks: !0,
+                          tracks: displayInfo?.text_tracks || props.asset.data?.tracks?.filter(
+                            (track) => track.type === "text"
+                          ) || []
+                        }
+                      ),
+                      /* @__PURE__ */ jsx(
+                        AudioTracksManager,
+                        {
+                          asset: props.asset,
+                          iconOnly: !0,
+                          collapseTracks: !0,
+                          tracks: displayInfo?.audio_tracks || props.asset.data?.tracks?.filter(
+                            (track) => track.type === "audio"
+                          ) || []
+                        }
+                      )
+                    ] })
                   ] }),
                   /* @__PURE__ */ jsxs(Stack, { space: 4, flex: 1, sizing: "border", children: [
                     /* @__PURE__ */ jsxs(TabList, { space: 2, children: [
@@ -5083,6 +6038,14 @@ function PlayerActionsMenu(props) {
                 icon: TranslateIcon,
                 text: "Captions",
                 onClick: () => setDialogState("edit-captions")
+              }
+            ),
+            /* @__PURE__ */ jsx(
+              MenuItem,
+              {
+                icon: AudioIcon,
+                text: "Audio tracks",
+                onClick: () => setDialogState("edit-audio-tracks")
               }
             ),
             /* @__PURE__ */ jsx(

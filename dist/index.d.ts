@@ -72,8 +72,17 @@ declare interface MuxAudioTrack {
   type: 'audio'
   id: string
   duration?: number
-  max_channels: number
-  max_channel_layout: 'stereo' | string
+  max_channels?: number
+  max_channel_layout?: 'stereo' | string
+  primary?: boolean
+  language_code?: 'en' | 'en-US' | string
+  name?: 'English' | string
+  passthrough?: string
+  status?: 'preparing' | 'ready' | 'errored'
+  error?: {
+    type: string
+    messages?: string[]
+  }
 }
 
 declare interface MuxErrors {
