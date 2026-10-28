@@ -1,10 +1,10 @@
-import {Box, ButtonProps, Flex, Text} from '@sanity/ui'
-import React, {createElement, isValidElement, useId} from 'react'
+import {Box, type ButtonProps, Flex, Text} from '@sanity/ui'
+import {isValidElement, useId, useCallback} from 'react'
 import {isValidElementType} from 'react-is'
 
 import {FileButton} from './FileInputMenuItem.styled'
 
-export interface FileInputMenuItemProps extends ButtonProps {
+export interface FileInputMenuItemProps extends Omit<ButtonProps, 'onSelect'> {
   accept?: string
   capture?: 'user' | 'environment'
   multiple?: boolean
@@ -12,45 +12,47 @@ export interface FileInputMenuItemProps extends ButtonProps {
   disabled?: boolean
 }
 
-export const FileInputMenuItem = React.forwardRef(function FileInputMenuItem(
+export function FileInputMenuItem(
   props: FileInputMenuItemProps &
-    Omit<React.HTMLProps<HTMLButtonElement>, 'as' | 'ref' | 'type' | 'value' | 'onSelect'>,
-  forwardedRef: React.ForwardedRef<HTMLInputElement>
+    Omit<React.HTMLProps<HTMLButtonElement>, 'as' | 'ref' | 'type' | 'value' | 'onSelect'> & {
+      ref?: React.Ref<HTMLInputElement>
+    },
 ) {
   const {
-    icon,
+    icon: Icon,
     id: idProp,
     accept,
     capture,
     fontSize,
     multiple,
     onSelect,
-    space = 3,
+    gap = 3,
     textAlign,
     text,
     disabled,
+    ref,
     ...rest
   } = props
   const idHook = useId()
   const id = idProp || idHook
 
-  const handleChange = React.useCallback(
+  const handleChange = useCallback(
     (event: React.ChangeEvent<HTMLInputElement>) => {
       if (onSelect && event.target.files) {
         onSelect(Array.from(event.target.files))
       }
     },
-    [onSelect]
+    [onSelect],
   )
 
   const content = (
     <Flex align="center" justify="flex-start">
       {/* Icon */}
-      {icon && (
-        <Box marginRight={text ? space : undefined}>
+      {Icon && (
+        <Box marginRight={text ? gap : undefined}>
           <Text size={fontSize}>
-            {isValidElement(icon) && icon}
-            {isValidElementType(icon) && createElement(icon)}
+            {isValidElement(Icon) && Icon}
+            {isValidElementType(Icon) && <Icon />}
           </Text>
         </Box>
       )}
@@ -65,7 +67,7 @@ export const FileInputMenuItem = React.forwardRef(function FileInputMenuItem(
   )
 
   return (
-    <FileButton {...rest} htmlFor={id} disabled={disabled} ref={forwardedRef}>
+    <FileButton {...rest} htmlFor={id} disabled={disabled} ref={ref}>
       {content}
 
       {/* Visibly hidden input */}
@@ -82,4 +84,4 @@ export const FileInputMenuItem = React.forwardRef(function FileInputMenuItem(
       />
     </FileButton>
   )
-})
+}

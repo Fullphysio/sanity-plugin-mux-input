@@ -11,7 +11,7 @@ import type {
    */
 export function getPlaybackId(
   asset: Pick<VideoAssetDocument, 'data'>,
-  priority: string[] = ['drm', 'signed', 'public']
+  priority: string[] = ['drm', 'signed', 'public'],
 ): string {
   try {
     if (!asset) {
@@ -27,7 +27,7 @@ export function getPlaybackId(
         }
       }
 
-      return playbackIds[0].id
+      return playbackIds[0]!.id
     }
 
     throw new TypeError('Missing playbackId')
@@ -38,18 +38,30 @@ export function getPlaybackId(
 }
 
 export function getPlaybackPolicy(
-  asset: Pick<VideoAssetDocument, 'data' | 'playbackId'>
+  asset: Pick<VideoAssetDocument, 'data' | 'playbackId'>,
 ): MuxPlaybackId | undefined {
   return (
     asset.data?.playback_ids?.find(
-      (playbackId) => getPlaybackId(asset, ['drm', 'signed', 'public']) === playbackId.id
+      (playbackId) => getPlaybackId(asset, ['drm', 'signed', 'public']) === playbackId.id,
     ) ?? {id: '', policy: 'public'}
   )
 }
 
+/**
+ * Frontends query the document's top-level `playbackId`, so a deleted id (Robots `moderate`
+ * deletes them all) would keep failing after playback is restored.
+ */
+export function playbackIdToKeep(
+  current: string | undefined,
+  playbackIds: Pick<MuxPlaybackId, 'id'>[] | undefined,
+): string | undefined {
+  const ids = (playbackIds ?? []).map((entry) => entry.id)
+  return current && ids.includes(current) ? current : ids[0]
+}
+
 export function getPlaybackPolicyById(
   asset: Pick<VideoAssetDocument, 'data'>,
-  playbackId: string
+  playbackId: string,
 ): MuxPlaybackId | undefined {
   return asset.data?.playback_ids?.find((entry) => playbackId === entry.id)
 }
@@ -59,7 +71,7 @@ export function hasPlaybackPolicy(
     playback_policy?: PlaybackPolicy[]
     advanced_playback_policies: AdvancedPlaybackPolicy[]
   }>,
-  policy: PlaybackPolicy
+  policy: PlaybackPolicy,
 ) {
   return (
     (data.advanced_playback_policies &&

@@ -23,18 +23,16 @@ export default function SelectAssets({
         onChange(PatchEvent.from([unset(['asset'])]))
       }
       if (chosenAsset._id !== selectedAsset?._id) {
-        const patches = []
-        patches.push(setIfMissing({asset: {}, _type: 'mux.video'}))
-        patches.push(set({_type: 'reference', _weak: true, _ref: chosenAsset._id}, ['asset']))
-        if (config.inlineAssetMetadata) {
-          patches.push(setIfMissing({data: {}}))
-          patches.push(set({_type: 'metadata', ...(chosenAsset.data ?? {})}, ['data']))
-        }
-        onChange(PatchEvent.from(patches))
+        onChange(
+          PatchEvent.from([
+            setIfMissing({asset: {}, _type: 'mux.video'}),
+            set({_type: 'reference', _weak: true, _ref: chosenAsset._id}, ['asset']),
+          ]),
+        )
       }
       setDialogState(false)
     },
-    [onChange, setDialogState, selectedAsset]
+    [onChange, setDialogState, selectedAsset],
   )
 
   return <VideosBrowser onSelect={handleSelect} config={config} />

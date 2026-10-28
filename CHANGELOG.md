@@ -1,9 +1,366 @@
-<!-- markdownlint-disable --><!-- textlint-disable -->
+# sanity-plugin-mux-input
 
-# 📓 Changelog
+## 5.2.1
 
-All notable changes to this project will be documented in this file. See
-[Conventional Commits](https://conventionalcommits.org) for commit guidelines.
+### Patch Changes
+
+- [#2074](https://github.com/sanity-io/plugins/pull/2074) [`1494069`](https://github.com/sanity-io/plugins/commit/149406933b6527438d85a79ee90df6a9ef74eec5) Thanks [@pedrobonamin](https://github.com/pedrobonamin)! - Show the video poster with a play button in the input and only mount the Mux player when the editor clicks it, so opening forms with several video fields no longer freezes Safari
+
+## 5.2.0
+
+### Minor Changes
+
+- [#2143](https://github.com/sanity-io/plugins/pull/2143) [`b8dd2cd`](https://github.com/sanity-io/plugins/commit/b8dd2cdc4343dbeb1018e650a27bfa738c2c3d27) Thanks [@R-Delfino95](https://github.com/R-Delfino95)! - Attach Mux Robots directives to every upload with `defaultDirectiveIds` and run a directive on a video from its Robots panel. The upload dialog shows the directives that will run, or how to set them up when none are configured
+
+- [#2143](https://github.com/sanity-io/plugins/pull/2143) [`b8dd2cd`](https://github.com/sanity-io/plugins/commit/b8dd2cdc4343dbeb1018e650a27bfa738c2c3d27) Thanks [@R-Delfino95](https://github.com/R-Delfino95)! - Run Mux Robots workflows from the Studio: open Robots from a video's menu or from its tab in the Videos tool to run any of the twelve workflows, follow and cancel jobs, and read their outputs. Every job on the video and the newest summarize and moderate outputs are recorded on the `mux.videoAsset` document, and **Apply summary** copies the summary's title, description and tags into the document that holds the video, after a preview. Only administrators can run Robots by default; set `allowedRolesForRobots` to choose the roles. Chapters tracks are now listed apart from captions and no longer count as captions.
+
+### Patch Changes
+
+- [#2209](https://github.com/sanity-io/plugins/pull/2209) [`19e2fca`](https://github.com/sanity-io/plugins/commit/19e2fca5f1fb6e5d42cdc5c40c6109b2b688f659) Thanks [@squiggler-app](https://github.com/apps/squiggler-app)! - fix(deps): update dependency react-rx to ^7.1.0
+
+- [#2143](https://github.com/sanity-io/plugins/pull/2143) [`b8dd2cd`](https://github.com/sanity-io/plugins/commit/b8dd2cdc4343dbeb1018e650a27bfa738c2c3d27) Thanks [@R-Delfino95](https://github.com/R-Delfino95)! - The Studio player picks up new caption and audio tracks without a page refresh, and a signed video no longer reloads when an unrelated field of its document changes. A video without playback IDs can get a new one from its player instead of showing a bare error, and resyncing a video now also points `playbackId` at a playback ID the asset still has.
+
+- [#2143](https://github.com/sanity-io/plugins/pull/2143) [`b8dd2cd`](https://github.com/sanity-io/plugins/commit/b8dd2cdc4343dbeb1018e650a27bfa738c2c3d27) Thanks [@R-Delfino95](https://github.com/R-Delfino95)! - Update the video document in place when a file upload finishes, instead of replacing it, so fields written in the meantime are kept
+
+## 5.1.3
+
+### Patch Changes
+
+- [#2158](https://github.com/sanity-io/plugins/pull/2158) [`53590bf`](https://github.com/sanity-io/plugins/commit/53590bff68d6c255b19a464cd18bcc2ec2d594de) Thanks [@squiggler-app](https://github.com/apps/squiggler-app)! - fix(deps): update dependency @mux/mux-player-react to ^3.14.0
+
+- [#2192](https://github.com/sanity-io/plugins/pull/2192) [`3f25bda`](https://github.com/sanity-io/plugins/commit/3f25bda6bf711cae4a4f4393f664551bbd5e93f3) Thanks [@stipsan](https://github.com/stipsan)! - fix(deps): update dependency @sanity/ui to ^4.4.5
+
+## 5.1.2
+
+### Patch Changes
+
+- [#2157](https://github.com/sanity-io/plugins/pull/2157) [`22cddf3`](https://github.com/sanity-io/plugins/commit/22cddf3e3d83a1901e1a148e7dbadbabbe62b3ab) Thanks [@squiggler-app](https://github.com/apps/squiggler-app)! - fix(deps): update dependency @mux/mux-player to ^3.14.0
+
+- [#2150](https://github.com/sanity-io/plugins/pull/2150) [`9a107b5`](https://github.com/sanity-io/plugins/commit/9a107b5085be23d0d0fd6531fe2dac16108f6f22) Thanks [@stipsan](https://github.com/stipsan)! - Update `react-rx` to v7. The document list preview now renders its loading placeholder on the first paint and subscribes to the preview state once mounted, matching the Studio's own pane item preview. `react-rx` v7 requires React `^19.2` (already required) and declares Node `>=22.12`.
+
+- [#2163](https://github.com/sanity-io/plugins/pull/2163) [`2611f2a`](https://github.com/sanity-io/plugins/commit/2611f2a8fdf07f424f75616bb29886c5fb4b6d30) Thanks [@stipsan](https://github.com/stipsan)! - fix(deps): update dependency @sanity/ui to ^4.4.4
+
+## 5.1.1
+
+### Patch Changes
+
+- [#1988](https://github.com/sanity-io/plugins/pull/1988) [`f8a6342`](https://github.com/sanity-io/plugins/commit/f8a634255e429e39767c4f5a355df0acd58a3f59) Thanks [@squiggler-app](https://github.com/apps/squiggler-app)! - fix(deps): update dependency oxc-transform-react to ^0.153.0
+
+## 5.1.0
+
+### Minor Changes
+
+- [#2085](https://github.com/sanity-io/plugins/pull/2085) [`3a5e335`](https://github.com/sanity-io/plugins/commit/3a5e335238844f54058973dba4bea87e4fdd8707) Thanks [@sjelfull](https://github.com/sjelfull)! - Add the `muxApiHost` option. It sends only Mux addon requests to a different host, for example a local development server. Other Studio requests do not change.
+
+## 5.0.13
+
+### Patch Changes
+
+- [#2046](https://github.com/sanity-io/plugins/pull/2046) [`546e3a9`](https://github.com/sanity-io/plugins/commit/546e3a9477c99d9e54ddaf7bcdcca67cf66e0420) Thanks [@stipsan](https://github.com/stipsan)! - Raise the minimum versions of the `@sanity/ui` (4.2.7), `@sanity/icons` (5.2.2) and `motion` (13.4.4) dependencies the plugin uses
+
+## 5.0.12
+
+### Patch Changes
+
+- [#1928](https://github.com/sanity-io/plugins/pull/1928) [`3195e01`](https://github.com/sanity-io/plugins/commit/3195e01b3adffe32e03cb0d65da00b091e18ce89) Thanks [@stipsan](https://github.com/stipsan)! - Compile React Compiler memoization with the native oxc transform (`reactCompiler: {transform: 'oxc'}` from `@sanity/tsdown-config` 0.26, backed by `oxc-transform-react`) instead of `babel-plugin-react-compiler`
+
+## 5.0.11
+
+### Patch Changes
+
+- [#1878](https://github.com/sanity-io/plugins/pull/1878) [`c30892f`](https://github.com/sanity-io/plugins/commit/c30892f91ce0e048dae59c395b998dddcc843b43) Thanks [@squiggler-app](https://github.com/apps/squiggler-app)! - fix(deps): update dependency styled-components to ^6.5.3
+
+- [#1856](https://github.com/sanity-io/plugins/pull/1856) [`0c770b1`](https://github.com/sanity-io/plugins/commit/0c770b110f816f97b9c766b985d52e97918a82ac) Thanks [@stipsan](https://github.com/stipsan)! - Replace deprecated Sanity UI, React, and RxJS APIs (`space` → `gap`, `useRelativeTime` with `useTemporalPhrase`, `throwError` factory). Remaining theme v1 focus-ring usage is deferred with targeted lint disables.
+
+- [#1926](https://github.com/sanity-io/plugins/pull/1926) [`f485d93`](https://github.com/sanity-io/plugins/commit/f485d934bfcb46ac873c66c6332d760815d797dd) Thanks [@stipsan](https://github.com/stipsan)! - Suppress new oxlint React Compiler rule violations, pending fixes in a follow-up
+
+- [#1922](https://github.com/sanity-io/plugins/pull/1922) [`22c8082`](https://github.com/sanity-io/plugins/commit/22c8082f6ecc377dd1978267d849113cd2477b49) Thanks [@stipsan](https://github.com/stipsan)! - Update `@sanity/client` to v8
+
+## 5.0.10
+
+### Patch Changes
+
+- [#1887](https://github.com/sanity-io/plugins/pull/1887) [`f981253`](https://github.com/sanity-io/plugins/commit/f9812531f84d1422fd50151f9f3ddb0ffacbc500) Thanks [@squiggler-app](https://github.com/apps/squiggler-app)! - fix(deps): update dependency swr to ^2.5.0
+
+- [#1881](https://github.com/sanity-io/plugins/pull/1881) [`440c499`](https://github.com/sanity-io/plugins/commit/440c4997cb74daab0e375519275f42a234f8a76e) Thanks [@stipsan](https://github.com/stipsan)! - Update @sanity/client to ^7.26.2 and @sanity/ui to ^4.0.1
+
+## 5.0.9
+
+### Patch Changes
+
+- [#1793](https://github.com/sanity-io/plugins/pull/1793) [`0650099`](https://github.com/sanity-io/plugins/commit/0650099886e58486f958b7d5318333bba5b7aff8) Thanks [@stipsan](https://github.com/stipsan)! - upgrade to `@sanity/ui` v4
+
+## 5.0.8
+
+### Patch Changes
+
+- [#1792](https://github.com/sanity-io/plugins/pull/1792) [`c61bb44`](https://github.com/sanity-io/plugins/commit/c61bb4444b326668e03a4d83a9853bec7a638d15) Thanks [@squiggler-app](https://github.com/apps/squiggler-app)! - fix(deps): update dependency react-rx to ^4.2.5
+
+## 5.0.7
+
+### Patch Changes
+
+- [#1751](https://github.com/sanity-io/plugins/pull/1751) [`b065f3d`](https://github.com/sanity-io/plugins/commit/b065f3dec7b675616043fe6308ab4e8228b12f26) Thanks [@squiggler-app](https://github.com/apps/squiggler-app)! - fix(deps): update dependency @mux/mux-player to ^3.13.2
+
+- [#1752](https://github.com/sanity-io/plugins/pull/1752) [`1097877`](https://github.com/sanity-io/plugins/commit/1097877c0640bfa6b9b541192677a844ab270426) Thanks [@squiggler-app](https://github.com/apps/squiggler-app)! - fix(deps): update dependency @mux/mux-player-react to ^3.13.2
+
+## 5.0.6
+
+### Patch Changes
+
+- [#1702](https://github.com/sanity-io/plugins/pull/1702) [`2a3a7ea`](https://github.com/sanity-io/plugins/commit/2a3a7eab8616981991e4a0b345ebe866a5fec8df) Thanks [@stipsan](https://github.com/stipsan)! - Update `@sanity/ui` dependency to ^3.4.3.
+
+- [#1707](https://github.com/sanity-io/plugins/pull/1707) [`5eb902e`](https://github.com/sanity-io/plugins/commit/5eb902e0bca64962bd284c7675e9e9704ea372bd) Thanks [@stipsan](https://github.com/stipsan)! - Update oxlint suppressions for React Compiler and exhaustive-deps compatibility
+
+## 5.0.5
+
+### Patch Changes
+
+- [#1684](https://github.com/sanity-io/plugins/pull/1684) [`4ea0d1f`](https://github.com/sanity-io/plugins/commit/4ea0d1fd2eeb05b80f38e11aa17ca29390115999) Thanks [@copilot-swe-agent](https://github.com/apps/copilot-swe-agent)! - Update `@sanity/icons` dependency to the latest catalog version.
+
+- [#1684](https://github.com/sanity-io/plugins/pull/1684) [`4ea0d1f`](https://github.com/sanity-io/plugins/commit/4ea0d1fd2eeb05b80f38e11aa17ca29390115999) Thanks [@copilot-swe-agent](https://github.com/apps/copilot-swe-agent)! - Update `@sanity/ui` dependency to the latest catalog version.
+
+## 5.0.4
+
+### Patch Changes
+
+- [#1622](https://github.com/sanity-io/plugins/pull/1622) [`6fe3c11`](https://github.com/sanity-io/plugins/commit/6fe3c11e32b8187a19fbdc333e4a8b159fe5a616) Thanks [@squiggler-app](https://github.com/apps/squiggler-app)! - fix(deps): update dependency tsdown to ^0.22.9
+
+## 5.0.3
+
+### Patch Changes
+
+- [#1596](https://github.com/sanity-io/plugins/pull/1596) [`f06fd76`](https://github.com/sanity-io/plugins/commit/f06fd767531740a09a5755f41fa1d3d42da202ae) Thanks [@squiggler-app](https://github.com/apps/squiggler-app)! - fix(deps): update dependency tsdown to ^0.22.8
+
+## 5.0.2
+
+### Patch Changes
+
+- [#1571](https://github.com/sanity-io/plugins/pull/1571) [`52975b2`](https://github.com/sanity-io/plugins/commit/52975b2f0d4ea5086c800b2ce16190b862284a95) Thanks [@stipsan](https://github.com/stipsan)! - fix(deps): update tsdown to ^0.22.7 and @sanity/tsdown-config to ^0.14.0
+
+## 5.0.1
+
+### Patch Changes
+
+- [#1562](https://github.com/sanity-io/plugins/pull/1562) [`aa53df6`](https://github.com/sanity-io/plugins/commit/aa53df60e10f50db8d1a3a5f12ebb5b2ba8e8799) Thanks [@stipsan](https://github.com/stipsan)! - Align the `styled-components` peer dependency range with the shared `peer` catalog (`^6.1`, the range Sanity Studio v5+ already requires)
+
+## 5.0.0
+
+### Major Changes
+
+- [#1560](https://github.com/sanity-io/plugins/pull/1560) [`c270307`](https://github.com/sanity-io/plugins/commit/c270307ace6fa6fd0bb615aa68352ed6fd3d7a52) Thanks [@stipsan](https://github.com/stipsan)! - Enable React Compiler
+
+  The package is now built with React Compiler targeting React 19, so published components are memoized automatically. As a result the `react` peer dependency is tightened from `^18.3 || ^19` to `^19.2`, since the compiled output relies on `react/compiler-runtime`. In practice this doesn't drop any supported setup: the `sanity` peer dependency (`^5 || ^6.0.0-0`) already requires React 19.2.
+
+## 4.1.9
+
+### Patch Changes
+
+- [#1555](https://github.com/sanity-io/plugins/pull/1555) [`5ade159`](https://github.com/sanity-io/plugins/commit/5ade159d97951a87867d225b72d6008cdc5e7fd6) Thanks [@stipsan](https://github.com/stipsan)! - Render document previews in the video references list with `IntentLink` passed directly to `PreviewCard`'s `as` prop, instead of recreating a wrapper link component on every render. This preserves the card's styling and focus ring on the rendered link and avoids unnecessary remounts.
+
+## 4.1.8
+
+### Patch Changes
+
+- [#1519](https://github.com/sanity-io/plugins/pull/1519) [`a11d511`](https://github.com/sanity-io/plugins/commit/a11d511b371b332adc08197711583951eb294166) Thanks [@squiggler-app](https://github.com/apps/squiggler-app)! - fix(deps): update dependency tsdown to ^0.22.5
+
+- [#1541](https://github.com/sanity-io/plugins/pull/1541) [`9fd850d`](https://github.com/sanity-io/plugins/commit/9fd850d93e55a31691d10c8f2dc22619edd90cb2) Thanks [@squiggler-app](https://github.com/apps/squiggler-app)! - fix(deps): update dependency iso-639-1 to ^3.1.6
+
+## 4.1.7
+
+### Patch Changes
+
+- [#1493](https://github.com/sanity-io/plugins/pull/1493) [`1a6465d`](https://github.com/sanity-io/plugins/commit/1a6465d2548e8fe8b034f58b89a905a6ad74bd3a) Thanks [@squiggler-app](https://github.com/apps/squiggler-app)! - fix(deps): update dependency react-rx to ^4.2.3
+
+## 4.1.6
+
+### Patch Changes
+
+- [#1476](https://github.com/sanity-io/plugins/pull/1476) [`b8bc962`](https://github.com/sanity-io/plugins/commit/b8bc96275b26a3d219a55cd22e3d29b27e331e11) Thanks [@stipsan](https://github.com/stipsan)! - Remove redundant type assertions in the uploader components (internal refactor, no API change)
+
+## 4.1.5
+
+### Patch Changes
+
+- [#1491](https://github.com/sanity-io/plugins/pull/1491) [`2361892`](https://github.com/sanity-io/plugins/commit/236189294b6408c9bced43765e53cf26a11a0e66) Thanks [@stipsan](https://github.com/stipsan)! - Build with `tsdown` instead of `@sanity/pkg-utils`. Internal build-tooling change only, with no intended changes to the public API or runtime behavior. The `process.env.PKG_VERSION` constant is still replaced with the package version at build time.
+
+## 4.1.4
+
+### Patch Changes
+
+- [#1460](https://github.com/sanity-io/plugins/pull/1460) [`f50f060`](https://github.com/sanity-io/plugins/commit/f50f0605968e5cec4f23f5f3455abe5c8ddda23c) Thanks [@stipsan](https://github.com/stipsan)! - Regenerate TypeScript declaration output: `isolatedDeclarations` is no longer used and declarations are now generated with tsgo (`@typescript/native-preview`). Internal build-tooling change only, with no runtime behavior or public API changes.
+
+## 4.1.3
+
+### Patch Changes
+
+- [#1481](https://github.com/sanity-io/plugins/pull/1481) [`0eae652`](https://github.com/sanity-io/plugins/commit/0eae652abea74fd63af2d334707afc8ecd4eb15a) Thanks [@stipsan](https://github.com/stipsan)! - Upgrade `@sanity/pkg-utils` to `^10.9.0`, enabling tree-shaking of unused `styled-components` in the published bundle. Tagged template literals are now transpiled to plain call expressions during build, so bundlers can drop styled components this plugin exports but the app doesn't use, reducing bundle size.
+
+## 4.1.2
+
+### Patch Changes
+
+- [#1474](https://github.com/sanity-io/plugins/pull/1474) [`555ef6e`](https://github.com/sanity-io/plugins/commit/555ef6e1de0a3ae72bc584f5755c0bd325db1303) Thanks [@squiggler-app](https://github.com/apps/squiggler-app)! - fix(deps): update dependency typescript to v6
+
+- [#1471](https://github.com/sanity-io/plugins/pull/1471) [`52487d2`](https://github.com/sanity-io/plugins/commit/52487d208f11fe2a4ccb523fab9386f3fbdd5880) Thanks [@stipsan](https://github.com/stipsan)! - Update `@sanity/icons` to v4 and adopt its per-icon import paths for smaller bundles and faster treeshaking
+
+## 4.1.1
+
+### Patch Changes
+
+- [#1363](https://github.com/sanity-io/plugins/pull/1363) [`f9acf7c`](https://github.com/sanity-io/plugins/commit/f9acf7c0599e63feb30509f7d42ff941a01e2d35) Thanks [@stipsan](https://github.com/stipsan)! - Replace `React.forwardRef` with the React 19 ref-as-prop pattern (internal refactor, no API change)
+
+## 4.1.0
+
+### Minor Changes
+
+- [#1107](https://github.com/sanity-io/plugins/pull/1107) [`36b4d13`](https://github.com/sanity-io/plugins/commit/36b4d13477f6842aaaef2f6b58b70b339ef68bca) Thanks [@y-dpi](https://github.com/y-dpi), [@R-Delfino95](https://github.com/R-Delfino95)! - Add a "Mezzanine" action to enable and download a Mux asset's master-access file
+
+  A new "Mezzanine" section is available in the asset details dialog (next to Captions) and in the player actions menu. It lets editors enable Mux's master access — the highest-quality, near-lossless source copy of the asset, meant for offline editing and archival rather than streaming (unlike the streamable MP4 static renditions). The same surface explains what it is (free, available for 24 hours) and lets the user enable, watch it prepare, and download it, and links to Mux's guide — there's no separate confirmation dialog.
+
+  Enabling and status checks go through the Mux addon proxy (the same authentication as every other addon call), and the resulting `master` data is stored on the Sanity document — so the status is polled until ready (like captions) and is already present for assets imported from Mux. Because the Mux download URL is short-lived, the Download action re-fetches the asset first: if the file is still available it redirects to it, otherwise it prompts to enable it again.
+
+### Patch Changes
+
+- [#1425](https://github.com/sanity-io/plugins/pull/1425) [`99ac32f`](https://github.com/sanity-io/plugins/commit/99ac32f3eba211849e4813e296d75a634d28494f) Thanks [@squiggler-app](https://github.com/apps/squiggler-app)! - fix(deps): update dependency swr to ^2.4.2
+
+- [#1451](https://github.com/sanity-io/plugins/pull/1451) [`71f8620`](https://github.com/sanity-io/plugins/commit/71f8620ddb285f29a0d27ceb746c52cfb73acf8e) Thanks [@stipsan](https://github.com/stipsan)! - Move `react-is` from peerDependencies to dependencies to satisfy `@sanity/pkg-utils` validation
+
+## 4.0.3
+
+### Patch Changes
+
+- [#1417](https://github.com/sanity-io/plugins/pull/1417) [`50df1f2`](https://github.com/sanity-io/plugins/commit/50df1f287debd7069531f4dcf8f23f740c487923) Thanks [@stipsan](https://github.com/stipsan)! - Remove incorrect `sideEffects: false` flag so consumer bundlers don't tree-shake modules with side effects
+
+## 4.0.2
+
+### Patch Changes
+
+- [#1375](https://github.com/sanity-io/plugins/pull/1375) [`150147b`](https://github.com/sanity-io/plugins/commit/150147bb58b207060abb2a148237352abe0bb6fb) Thanks [@squiggler-app](https://github.com/apps/squiggler-app)! - fix(deps): Update lodash monorepo
+
+## 4.0.1
+
+### Patch Changes
+
+- [`cc31111`](https://github.com/sanity-io/plugins/commit/cc31111d34b128b130bf6223ab611cf1cc1a0344) Thanks [@stipsan](https://github.com/stipsan)! - Stop bundling `use-error-boundary` and treat it as an external dependency
+
+## 4.0.0
+
+### Major Changes
+
+- [#1354](https://github.com/sanity-io/plugins/pull/1354) [`3217cf8`](https://github.com/sanity-io/plugins/commit/3217cf801b2e84f41336d6ffa097dd77289a0383) Thanks [@stipsan](https://github.com/stipsan)! - Drop the CommonJS build and require Sanity Studio v5 or v6
+
+  The plugin is now published as ESM only and no longer ships a CommonJS (`require`) build. The `sanity` peer dependency is also tightened to `^5 || ^6.0.0-0`, dropping declared support for Studio v4. Sanity Studio v5+ is pure ESM and the supported Node.js versions handle `require(esm)`, so a separate CommonJS build is no longer needed and only risks two copies of the code ending up in the module tree.
+
+### Patch Changes
+
+- [#1353](https://github.com/sanity-io/plugins/pull/1353) [`5ff7063`](https://github.com/sanity-io/plugins/commit/5ff70639f75bce2a4d7ef88aa2ec03d82cae4acc) Thanks [@stipsan](https://github.com/stipsan)! - Remove the obsolete `@sanity/incompatible-plugin` Sanity Studio v2 compatibility shim (`sanity.json` and `v2-incompatible.js`)
+
+- [#1352](https://github.com/sanity-io/plugins/pull/1352) [`2bae6e5`](https://github.com/sanity-io/plugins/commit/2bae6e5c958d7b90449a13a9ef57ea45f831a454) Thanks [@stipsan](https://github.com/stipsan)! - Remove `src` from the published `files` array; only the compiled `dist` output is published.
+
+## 3.0.5
+
+### Patch Changes
+
+- [#1296](https://github.com/sanity-io/plugins/pull/1296) [`707f3e8`](https://github.com/sanity-io/plugins/commit/707f3e88c6c06b50823671565e46c059e682ac42) Thanks [@squiggler-app](https://github.com/apps/squiggler-app)! - fix(deps): Update dependency @mux/mux-player to ^3.13.0
+
+- [#1297](https://github.com/sanity-io/plugins/pull/1297) [`80c9178`](https://github.com/sanity-io/plugins/commit/80c917834aad7beca587112c9875cf020ce162c6) Thanks [@squiggler-app](https://github.com/apps/squiggler-app)! - fix(deps): Update dependency @mux/mux-player-react to ^3.13.0
+
+- [#1298](https://github.com/sanity-io/plugins/pull/1298) [`50181c1`](https://github.com/sanity-io/plugins/commit/50181c19cbb99b0f9328849ec72c240c4e3b4ca6) Thanks [@squiggler-app](https://github.com/apps/squiggler-app)! - fix(deps): Update dependency @mux/upchunk to ^3.5.0
+
+- [#1302](https://github.com/sanity-io/plugins/pull/1302) [`1b8f676`](https://github.com/sanity-io/plugins/commit/1b8f676d02d7c491d0b08fd0b26037f13449a7d9) Thanks [@squiggler-app](https://github.com/apps/squiggler-app)! - fix(deps): Update dependency @sanity/incompatible-plugin to ^1.0.5
+
+- [#1304](https://github.com/sanity-io/plugins/pull/1304) [`5d2195a`](https://github.com/sanity-io/plugins/commit/5d2195a8b56b1907391a6bfb9cff9ca5448bc9dc) Thanks [@squiggler-app](https://github.com/apps/squiggler-app)! - fix(deps): Update dependency @sanity/uuid to ^3.0.3
+
+- [#1316](https://github.com/sanity-io/plugins/pull/1316) [`23fedb0`](https://github.com/sanity-io/plugins/commit/23fedb0870b98d9b01bf0cff73b35bbb93e52715) Thanks [@squiggler-app](https://github.com/apps/squiggler-app)! - fix(deps): Update dependency iso-639-1 to ^3.1.5
+
+- [#1329](https://github.com/sanity-io/plugins/pull/1329) [`0d8d867`](https://github.com/sanity-io/plugins/commit/0d8d867fa51858233f086ae5fc85f6995ccd9dfd) Thanks [@squiggler-app](https://github.com/apps/squiggler-app)! - fix(deps): Update dependency swr to ^2.4.1
+
+- [#1330](https://github.com/sanity-io/plugins/pull/1330) [`597037c`](https://github.com/sanity-io/plugins/commit/597037cc115b0b0c98fb5d2780abe211fcf549af) Thanks [@squiggler-app](https://github.com/apps/squiggler-app)! - fix(deps): Update dependency type-fest to ^4.41.0
+
+- [#1342](https://github.com/sanity-io/plugins/pull/1342) [`9a60eae`](https://github.com/sanity-io/plugins/commit/9a60eae5de3cce25317b38c5d6fc070651a33c0d) Thanks [@stipsan](https://github.com/stipsan)! - Clean up unused internal files and exports now that the package is covered by knip.
+
+- [#1347](https://github.com/sanity-io/plugins/pull/1347) [`fabdc72`](https://github.com/sanity-io/plugins/commit/fabdc726bb1c9abee0e16252422ebd27a3d8e428) Thanks [@stipsan](https://github.com/stipsan)! - Adopt the shared monorepo TypeScript and lint conventions (shared `@repo/tsconfig`, type-aware linting, styled-components Babel transform) and fix the type errors surfaced by the stricter config.
+
+## 3.0.4
+
+### Patch Changes
+
+- [#1204](https://github.com/sanity-io/plugins/pull/1204) [`2625ff5`](https://github.com/sanity-io/plugins/commit/2625ff5f341d636886474a9e5a7a8c3e77c11280) Thanks [@squiggler-app](https://github.com/apps/squiggler-app)! - fix(deps): Update dependency react-rx to ^4.2.2
+
+- [#1205](https://github.com/sanity-io/plugins/pull/1205) [`a0c60af`](https://github.com/sanity-io/plugins/commit/a0c60af8b19d67cf8c4caaf6d166ff906fc6f73e) Thanks [@squiggler-app](https://github.com/apps/squiggler-app)! - fix(deps): Update dependency rxjs to ^7.8.2
+
+## 3.0.3
+
+### Patch Changes
+
+- [#1184](https://github.com/sanity-io/plugins/pull/1184) [`0e56680`](https://github.com/sanity-io/plugins/commit/0e56680d767d3c4974d1d2fe860d962e9953269d) Thanks [@squiggler-app](https://github.com/apps/squiggler-app)! - fix(deps): Update dependency @sanity/icons to ^3.7.4
+
+## 3.0.2
+
+### Patch Changes
+
+- [#1128](https://github.com/sanity-io/plugins/pull/1128) [`fd78991`](https://github.com/sanity-io/plugins/commit/fd7899182e4d591365ac77589113e2e41ad693c3) Thanks [@stipsan](https://github.com/stipsan)! - Migrate to ESM (`"type": "module"`) and upgrade `@sanity/pkg-utils` to v10, as required by `@sanity/plugin-kit`. The package still ships both ESM and CommonJS builds via the `exports` map, so consumers are unaffected.
+
+## 3.0.1
+
+### Patch Changes
+
+- [#1024](https://github.com/sanity-io/plugins/pull/1024) [`985978b`](https://github.com/sanity-io/plugins/commit/985978b54c0028de549197006a0b9753e2e30be9) Thanks [@stipsan](https://github.com/stipsan), [@skogsmaskin](https://github.com/skogsmaskin), [@rexxars](https://github.com/rexxars), [@erikpena](https://github.com/erikpena), [@R-Delfino95](https://github.com/R-Delfino95), [@snorrees](https://github.com/snorrees), [@KimPaow](https://github.com/KimPaow), [@hdoro](https://github.com/hdoro), [@dylanjha](https://github.com/dylanjha), [@RitaDias](https://github.com/RitaDias), [@bjoerge](https://github.com/bjoerge), [@spuppo-mux](https://github.com/spuppo-mux), [@Pintorado](https://github.com/Pintorado), [@y-dpi](https://github.com/y-dpi), [@sgulseth](https://github.com/sgulseth), [@jonabc](https://github.com/jonabc), [@runeb](https://github.com/runeb), [@robinpyon](https://github.com/robinpyon), [@phmasek](https://github.com/phmasek), [@pedrobonamin](https://github.com/pedrobonamin), [@ottob](https://github.com/ottob), [@olivierverwoerd](https://github.com/olivierverwoerd), [@mariuslundgard](https://github.com/mariuslundgard), [@larixk](https://github.com/larixk), [@kmelve](https://github.com/kmelve), [@Jorflo](https://github.com/Jorflo), [@JesperBry](https://github.com/JesperBry), [@Jerricho93](https://github.com/Jerricho93), [@javangriff](https://github.com/javangriff), [@jaredsmith](https://github.com/jaredsmith), [@jakobsen](https://github.com/jakobsen), [@israelroldan](https://github.com/israelroldan), [@iJackWilson](https://github.com/iJackWilson), [@goellner](https://github.com/goellner), [@edwin-mejia](https://github.com/edwin-mejia), [@donalffons](https://github.com/donalffons), [@danilo-arioli](https://github.com/danilo-arioli), [@amazinglalu](https://github.com/amazinglalu)! - Move sanity-plugin-mux-input into the sanity-io/plugins monorepo
+
+  No API or behavioral changes — this patch release verifies the plugin can be published from the monorepo. The only dependency change is that `@mux/mux-player` and `use-device-pixel-ratio` are now declared explicitly (they were already used at runtime, previously resolved transitively). Exports, peer dependencies, supported engines, and the dual CJS+ESM build output are unchanged. Adopting monorepo conventions (ESM-only build, React Compiler, lint fixes) will follow in subsequent releases.
+
+## [3.0.0](https://github.com/sanity-io/sanity-plugin-mux-input/compare/v2.19.1...v3.0.0) (2026-06-11)
+
+### ⚠ BREAKING CHANGES
+
+- `@sanity/ui` has been upgraded to v3, which is only
+  compatible with Sanity Studio v4 and later. The `sanity` peer dependency
+  is now `^4.0.0 || ^5.0.0 || ^6.0.0` and no longer allows Studio v3.
+  If you are on Studio v3, stay on the v2 release line of this plugin.
+
+- chore(deps): bump sanity and @sanity/vision dev dependencies to v6
+
+Sanity v6 requires a `path` prop on `FormField`, so the standalone
+plugin dialogs now pass an empty path. This is backwards compatible
+with Studio v4 and v5, where the prop is ignored.
+
+- chore: add sanity.cli.ts required by the v6 CLI
+
+### Features
+
+- upgrade @sanity/ui to v3, require Sanity Studio v4 or later ([#485](https://github.com/sanity-io/sanity-plugin-mux-input/issues/485)) ([6c148b0](https://github.com/sanity-io/sanity-plugin-mux-input/commit/6c148b07418688bb8462b24ba35d1b2f57c601f6))
+
+## [2.19.1](https://github.com/sanity-io/sanity-plugin-mux-input/compare/v2.19.0...v2.19.1) (2026-06-09)
+
+### Bug Fixes
+
+- add support for sanity v6 and adjust peer dependencies ([#484](https://github.com/sanity-io/sanity-plugin-mux-input/issues/484)) ([c4dc9bf](https://github.com/sanity-io/sanity-plugin-mux-input/commit/c4dc9bf142a99539c117638fa17908109ffad14f))
+
+## [2.19.0](https://github.com/sanity-io/sanity-plugin-mux-input/compare/v2.18.0...v2.19.0) (2026-05-11)
+
+### Features
+
+- Send plugin version to Mux proxy via `sanityVersion` query param ([#482](https://github.com/sanity-io/sanity-plugin-mux-input/issues/482)) ([bf3de21](https://github.com/sanity-io/sanity-plugin-mux-input/commit/bf3de21ea0d02acbe338b679d78402a91dcfb56c))
+
+## [2.18.0](https://github.com/sanity-io/sanity-plugin-mux-input/compare/v2.17.0...v2.18.0) (2026-04-29)
+
+### Features
+
+- Add support for Google Drive share links ([#464](https://github.com/sanity-io/sanity-plugin-mux-input/issues/464)) ([f41961f](https://github.com/sanity-io/sanity-plugin-mux-input/commit/f41961f793069542620c55db2df65c27394f33f2))
+- Add support for SRT captions ([#481](https://github.com/sanity-io/sanity-plugin-mux-input/issues/481)) ([cd7aa33](https://github.com/sanity-io/sanity-plugin-mux-input/commit/cd7aa339f34d245ffb130fac3656dd291060cef3))
+
+## [2.17.0](https://github.com/sanity-io/sanity-plugin-mux-input/compare/v2.16.0...v2.17.0) (2026-03-11)
+
+### Features
+
+- watermark support ([#472](https://github.com/sanity-io/sanity-plugin-mux-input/issues/472)) ([b9af81f](https://github.com/sanity-io/sanity-plugin-mux-input/commit/b9af81fd4b47dc5738ad6efcda1622a17f014439))
+
+## [2.16.0](https://github.com/sanity-io/sanity-plugin-mux-input/compare/v2.15.0...v2.16.0) (2026-03-05)
+
+### Features
+
+- Resync asset ([#469](https://github.com/sanity-io/sanity-plugin-mux-input/issues/469)) ([7076433](https://github.com/sanity-io/sanity-plugin-mux-input/commit/707643353c75984406ce141a4a6b62069f4bf7d8))
 
 ## [2.15.0](https://github.com/sanity-io/sanity-plugin-mux-input/compare/v2.14.0...v2.15.0) (2026-02-18)
 

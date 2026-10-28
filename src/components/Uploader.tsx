@@ -1,6 +1,7 @@
-import {ErrorOutlineIcon} from '@sanity/icons'
-import {Button, CardTone, Flex, Text, useToast} from '@sanity/ui'
-import React, {useCallback, useEffect, useReducer, useRef, useState} from 'react'
+import {ErrorOutlineIcon} from '@sanity/icons/ErrorOutline'
+import {Button, type CardTone, Flex, Text} from '@sanity/ui'
+import {useToast} from '@sanity/ui/toast'
+import {useCallback, useEffect, useReducer, useRef, useState} from 'react'
 import {type Observable, Subject, Subscription} from 'rxjs'
 import {takeUntil, tap} from 'rxjs/operators'
 import type {SanityClient} from 'sanity'
@@ -12,7 +13,6 @@ import {type DialogState, type SetDialogState} from '../hooks/useDialogState'
 import {isServerError, isValidUrl} from '../util/asserters'
 import {extractDroppedFiles} from '../util/extractFiles'
 import {hasPlaybackPolicy} from '../util/getPlaybackPolicy'
-import {watchAssetForMetadata} from '../util/watchAssetUpdates'
 import type {
   MuxInputProps,
   MuxNewAssetSettings,
@@ -36,6 +36,8 @@ interface Props extends Pick<MuxInputProps, 'onChange' | 'readOnly'> {
   dialogState: DialogState
   setDialogState: SetDialogState
   needsSetup: boolean
+  /** Called when an upload finishes, with the directives it attached. */
+  onUploadWithDirectives: (documentId: string, directiveIds: string[]) => void
 }
 
 export type StagedUpload = {type: 'file'; files: FileList | File[]} | {type: 'url'; url: string}
@@ -88,14 +90,15 @@ export default function Uploader(props: Props) {
       const events$ = new Subject()
       return {
         observable: events$.asObservable(),
-        handleClick: ((event) => events$.next(event)) as React.MouseEventHandler<HTMLButtonElement>,
+        handleClick: (event: React.MouseEvent<HTMLButtonElement>) => events$.next(event),
       }
-    })()
+    })(),
   ).current
 
   const uploadRef = useRef<Subscription | null>(null)
   const uploadingDocumentId = useRef<string | null>(null)
   const [state, dispatch] = useReducer(
+    // oxlint-disable-next-line react/refs
     (prev: State, action: UploaderStateAction) => {
       switch (action.action) {
         case 'stageUpload':
@@ -136,7 +139,7 @@ export default function Uploader(props: Props) {
           let error = action.error
           if (isServerError(action.error) && hasPlaybackPolicy(action.settings, 'drm')) {
             error = new Error(
-              'Unknown Error while uploading DRM protected content. Make sure your DRM configuration ID is valid and set correctly'
+              'Unknown Error while uploading DRM protected content. Make sure your DRM configuration ID is valid and set correctly',
             )
           }
 
@@ -150,7 +153,7 @@ export default function Uploader(props: Props) {
       stagedUpload: null,
       uploadStatus: null,
       error: null,
-    }
+    },
   )
 
   // Make sure we close out the upload observer on dismount
@@ -198,40 +201,44 @@ export default function Uploader(props: Props) {
    * the Mux configuration for the direct asset upload.
    *
    * @param settings The Mux new_asset_settings object to send to Sanity
+   * @param watermark Optional watermark configuration
    * @returns
    */
-  const startUpload = (settings: MuxNewAssetSettings, assetName?: string) => {
+  const startUpload = (
+    settings: MuxNewAssetSettings,
+    watermark?: import('../util/types').WatermarkConfig,
+  ) => {
     const {stagedUpload} = state
     if (!stagedUpload || uploadRef.current) return
     dispatch({action: 'commitUpload'})
+    const directiveIds = settings.directives?.map(({id}) => id) ?? []
     let uploadObservable: Observable<UploadFileEvent | UploadUrlEvent>
-    // eslint-disable-next-line default-case
     switch (stagedUpload.type) {
       case 'url':
         uploadObservable = uploadUrl({
           client: props.client,
           url: stagedUpload.url,
           settings,
-          assetName: (assetName) ? assetName : undefined,
+          watermark,
         })
         break
       case 'file':
         uploadObservable = uploadFile({
           client: props.client,
-          file: stagedUpload.files[0],
+          file: stagedUpload.files[0]!,
           settings,
-          assetName: (assetName) ? assetName : undefined,
+          watermark,
         }).pipe(
           takeUntil(
             cancelUploadButton.observable.pipe(
               tap(() => {
                 if (uploadingDocumentId.current) {
-                  props.client.delete(uploadingDocumentId.current)
+                  void props.client.delete(uploadingDocumentId.current)
                   uploadingDocumentId.current = null
                 }
-              })
-            )
-          )
+              }),
+            ),
+          ),
         )
         break
     }
@@ -253,17 +260,13 @@ export default function Uploader(props: Props) {
           case 'success':
             dispatch({action: 'progress', percent: 100})
             uploadingDocumentId.current = null
-            const patches = []
-            patches.push(setIfMissing({asset: {}, _type: 'mux.video'}))
-            patches.push(set({_type: 'reference', _weak: true, _ref: event.asset._id}, ['asset']))
-            if (props.config.inlineAssetMetadata) {
-              patches.push(setIfMissing({data: {}}))
-              patches.push(set({_type: 'metadata', ...(event.asset.data ?? {})}, ['data']))
-            }
-            props.onChange(PatchEvent.from(patches))
-            if (props.config.inlineAssetMetadata) {
-              watchAssetForMetadata(event.asset._id, props);
-            }
+            props.onUploadWithDirectives(event.asset._id, directiveIds)
+            props.onChange(
+              PatchEvent.from([
+                setIfMissing({asset: {}}),
+                set({_type: 'reference', _weak: true, _ref: event.asset._id}, ['asset']),
+              ]),
+            )
             break
           case 'pause':
           case 'resume':
@@ -344,7 +347,7 @@ export default function Uploader(props: Props) {
       return
     }
     setDragState(null)
-    extractDroppedFiles(event.nativeEvent.dataTransfer!).then((files) => {
+    void extractDroppedFiles(event.nativeEvent.dataTransfer!).then((files) => {
       dispatch({
         action: 'stageUpload',
         input: {type: 'file', files},
@@ -369,7 +372,7 @@ export default function Uploader(props: Props) {
     const isValidType = mimeTypes?.some((acceptedType) => {
       // Convert mime type pattern to regex (e.g., 'video/*' -> /^video\/.*$/)
       const pattern = `^${acceptedType.replace('*', '.*')}$`
-      return new RegExp(pattern).test(type)
+      return new RegExp(pattern).test(type!)
     })
 
     setDragState(isValidType ? 'valid' : 'invalid')
@@ -412,6 +415,7 @@ export default function Uploader(props: Props) {
     const {uploadStatus} = state
     return (
       <UploadProgress
+        // oxlint-disable-next-line react/refs
         onCancel={cancelUploadButton.handleClick}
         progress={uploadStatus.progress}
         filename={uploadStatus.file?.name || uploadStatus.url}

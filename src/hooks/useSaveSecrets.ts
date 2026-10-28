@@ -2,6 +2,7 @@ import {useCallback} from 'react'
 import type {SanityClient} from 'sanity'
 
 import {createSigningKeys, haveValidSigningKeys, saveSecrets, testSecrets} from '../actions/secrets'
+import {resetRobotsCapabilityCache} from '../robots/capability'
 import type {Secrets} from '../util/types'
 
 export const useSaveSecrets = (client: SanityClient, secrets: Secrets) => {
@@ -25,12 +26,15 @@ export const useSaveSecrets = (client: SanityClient, secrets: Secrets) => {
           enableSignedUrls,
           signingKeyId!,
           signingKeyPrivate!,
-          drmConfigId!
+          drmConfigId!,
         )
         const valid = await testSecrets(client)
         if (!valid?.status && token && secretKey) {
+          // oxlint-disable-next-line react/todo
           throw new Error('Invalid secrets')
         }
+        // A new token may have the Robots scope, so the next panel asks Mux again.
+        resetRobotsCapabilityCache()
       } catch (err) {
         console.error('Error while trying to save secrets:', err)
         throw err
@@ -40,7 +44,7 @@ export const useSaveSecrets = (client: SanityClient, secrets: Secrets) => {
         const hasValidSigningKeys = await haveValidSigningKeys(
           client,
           signingKeyId!,
-          signingKeyPrivate!
+          signingKeyPrivate!,
         )
 
         if (!hasValidSigningKeys) {
@@ -55,7 +59,7 @@ export const useSaveSecrets = (client: SanityClient, secrets: Secrets) => {
               enableSignedUrls,
               signingKeyId,
               signingKeyPrivate,
-              drmConfigId ?? ''
+              drmConfigId ?? '',
             )
           } catch (err: any) {
             // eslint-disable-next-line no-console
@@ -73,6 +77,6 @@ export const useSaveSecrets = (client: SanityClient, secrets: Secrets) => {
         drmConfigId,
       }
     },
-    [client, secrets]
+    [client, secrets],
   )
 }

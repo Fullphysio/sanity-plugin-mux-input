@@ -1,25 +1,26 @@
 // Lifted from sanity/form/inputs/files/common/UploadProgress
 
-import {Button, Card, Code, Flex, Inline, Stack, Text} from '@sanity/ui'
+import {Button, Card, Flex, Inline, Stack, Text} from '@sanity/ui'
+import {Code} from '@sanity/ui/code'
 import {LinearProgress} from 'sanity'
 import {styled} from 'styled-components'
 
-export const CardWrapper = styled(Card)`
+const CardWrapper = styled(Card)`
   min-height: 82px;
   box-sizing: border-box;
 `
 
-export const FlexWrapper = styled(Flex)`
+const FlexWrapper = styled(Flex)`
   text-overflow: ellipsis;
   overflow: hidden;
 `
 
-export const LeftSection = styled(Stack)`
+const LeftSection = styled(Stack)`
   position: relative;
   width: 60%;
 `
 
-export const CodeWrapper = styled(Code)`
+const CodeWrapper = styled(Code)`
   position: relative;
   width: 100%;
 
@@ -52,7 +53,7 @@ export const UploadProgress = ({
         <LeftSection>
           <Flex justify="center" gap={[3, 3, 2, 2]} direction={['column', 'column', 'row']}>
             <Text size={1}>
-              <Inline space={2}>
+              <Inline gap={2}>
                 {text}
                 <CodeWrapper size={1}>{filename ? filename : '...'}</CodeWrapper>
               </Inline>

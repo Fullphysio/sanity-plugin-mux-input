@@ -1,76 +1,21 @@
-import {CheckmarkIcon, EditIcon, LockIcon, PlayIcon} from '@sanity/icons'
-import {Button, Card, Stack, Text, Tooltip} from '@sanity/ui'
-import React, {useState} from 'react'
-import {styled} from 'styled-components'
+import {CheckmarkIcon} from '@sanity/icons/Checkmark'
+import {EditIcon} from '@sanity/icons/Edit'
+import {LockIcon} from '@sanity/icons/Lock'
+import {PlayIcon} from '@sanity/icons/Play'
+import {Button, Card, Stack, Text} from '@sanity/ui'
+import {Tooltip} from '@sanity/ui/tooltip'
+import {useCallback, useState} from 'react'
 
 import {DRMWarningDialog, useDrmPlaybackWarningContext} from '../context/DrmPlaybackWarningContext'
 import {THUMBNAIL_ASPECT_RATIO} from '../util/constants'
 import {getPlaybackPolicy} from '../util/getPlaybackPolicy'
-import {VideoAssetDocument} from '../util/types'
+import {type VideoAssetDocument} from '../util/types'
 import IconInfo from './IconInfo'
 import {AudioIcon} from './icons/Audio'
+import {PlayButton} from './PlayButton'
 import VideoMetadata from './VideoMetadata'
 import VideoPlayer, {assetIsAudio} from './VideoPlayer'
 import VideoThumbnail from './VideoThumbnail'
-
-const PlayButton = styled.button`
-  display: block;
-  padding: 0;
-  margin: 0;
-  border: none;
-  border-radius: 0.1875rem;
-  position: relative;
-  cursor: pointer;
-
-  &::after {
-    content: '';
-    background: var(--card-fg-color);
-    opacity: 0;
-    display: block;
-    position: absolute;
-    inset: 0;
-    z-index: 10;
-    transition: 0.15s ease-out;
-    border-radius: inherit;
-  }
-
-  > div[data-play] {
-    z-index: 11;
-    opacity: 0;
-    transition: 0.15s 0.05s ease-out;
-    position: absolute;
-    left: 50%;
-    top: 50%;
-    transform: translate(-50%, -50%);
-    color: var(--card-fg-color);
-    background: var(--card-bg-color);
-    width: auto;
-    height: 30%;
-    aspect-ratio: 1;
-    border-radius: 100%;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    box-sizing: border-box;
-    > svg {
-      display: block;
-      width: 70%;
-      height: auto;
-      // Visual balance to center-align the icon
-      transform: translateX(5%);
-    }
-  }
-
-  &:hover,
-  &:focus {
-    &::after {
-      opacity: 0.3;
-    }
-    > div[data-play] {
-      opacity: 1;
-    }
-  }
-`
 
 type RenderState = 'render-video' | 'pre-render-warn' | false
 
@@ -84,8 +29,8 @@ export default function VideoInBrowser({
   asset: VideoAssetDocument
 }) {
   const [renderVideo, setRenderVideo] = useState<RenderState>(false)
-  const select = React.useCallback(() => onSelect?.(asset), [onSelect, asset])
-  const edit = React.useCallback(() => onEdit?.(asset), [onEdit, asset])
+  const select = useCallback(() => onSelect?.(asset), [onSelect, asset])
+  const edit = useCallback(() => onEdit?.(asset), [onEdit, asset])
   const {hasShownWarning} = useDrmPlaybackWarningContext()
 
   if (!asset) {
@@ -171,7 +116,7 @@ export default function VideoInBrowser({
         </Tooltip>
       )}
       <Stack
-        space={3}
+        gap={3}
         height="fill"
         style={{
           gridTemplateRows: 'min-content min-content 1fr',

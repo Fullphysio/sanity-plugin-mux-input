@@ -1,22 +1,15 @@
-import {DownloadIcon, TranslateIcon, UploadIcon} from '@sanity/icons'
-import {
-  Autocomplete,
-  Button,
-  Card,
-  Dialog,
-  Flex,
-  Label,
-  Spinner,
-  Stack,
-  Text,
-  TextInput,
-  useToast,
-} from '@sanity/ui'
+import {DownloadIcon} from '@sanity/icons/Download'
+import {TranslateIcon} from '@sanity/icons/Translate'
+import {UploadIcon} from '@sanity/icons/Upload'
+import {Button, Card, Dialog, Flex, Label, Spinner, Stack, Text, TextInput} from '@sanity/ui'
+import {Autocomplete} from '@sanity/ui/autocomplete'
+import {useToast} from '@sanity/ui/toast'
 import LanguagesList from 'iso-639-1'
 import {useEffect, useId, useRef, useState} from 'react'
 
 import {addTextTrackFromUrl, deleteTextTrack, getAsset} from '../actions/assets'
 import {useClient} from '../hooks/useClient'
+import {addKeysToMuxData} from '../util/addKeysToMuxData'
 import {generateJwt} from '../util/generateJwt'
 import {getPlaybackId} from '../util/getPlaybackPolicy'
 import {getPlaybackPolicy} from '../util/getPlaybackPolicy'
@@ -51,7 +44,7 @@ export default function EditCaptionDialog({asset, track, onUpdate, onClose}: Pro
     () => {
       const baseCode = track.language_code?.split('-')[0]
       const found = LANGUAGE_OPTIONS.find(
-        (opt) => opt.value === track.language_code || opt.value === baseCode
+        (opt) => opt.value === track.language_code || opt.value === baseCode,
       )
       if (found) return found
       if (track.name) {
@@ -59,7 +52,7 @@ export default function EditCaptionDialog({asset, track, onUpdate, onClose}: Pro
         if (foundByName) return foundByName
       }
       return null
-    }
+    },
   )
   const [name, setName] = useState(track.name || '')
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -68,15 +61,17 @@ export default function EditCaptionDialog({asset, track, onUpdate, onClose}: Pro
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
+    // oxlint-disable-next-line react/set-state-in-effect
     setLanguageCode(track.language_code || '')
     setName(track.name || '')
     setVttUrl('')
     const baseCode = track.language_code?.split('-')[0]
     const foundByCode = LANGUAGE_OPTIONS.find(
-      (opt) => opt.value === track.language_code || opt.value === baseCode
+      (opt) => opt.value === track.language_code || opt.value === baseCode,
     )
     const foundByName = track.name ? LANGUAGE_OPTIONS.find((opt) => opt.label === track.name) : null
     setSelectedLanguage(foundByCode || foundByName || null)
+    // oxlint-disable-next-line react/exhaustive-effect-dependencies
   }, [track, asset, client])
 
   const handleDownloadCurrentFile = async () => {
@@ -93,7 +88,7 @@ export default function EditCaptionDialog({asset, track, onUpdate, onClose}: Pro
           title = 'Cannot download'
         }
       } else if (error === 'Track ID is missing' || error === 'Track is not ready yet') {
-        errorMessage = String(error)
+        errorMessage = error
         title = 'Cannot download'
       }
 
@@ -102,6 +97,7 @@ export default function EditCaptionDialog({asset, track, onUpdate, onClose}: Pro
         status: 'error',
         description: errorMessage,
       })
+      // oxlint-disable-next-line react/todo
     } finally {
       setDownloading(false)
     }
@@ -125,10 +121,11 @@ export default function EditCaptionDialog({asset, track, onUpdate, onClose}: Pro
     if (!asset._id || !asset.assetId) return
     try {
       const latestAssetData = await getAsset(client, asset.assetId)
+      const dataWithKeys = addKeysToMuxData(latestAssetData.data)
       await client
         .patch(asset._id)
-        .set({data: latestAssetData.data, status: latestAssetData.data.status})
-        .commit()
+        .set({data: dataWithKeys, status: latestAssetData.data.status})
+        .commit({returnDocuments: false})
     } catch (refreshError) {
       console.error('Failed to refresh asset data:', refreshError)
     }
@@ -268,6 +265,7 @@ export default function EditCaptionDialog({asset, track, onUpdate, onClose}: Pro
 
     try {
       if (!asset.assetId) {
+        // oxlint-disable-next-line react/todo
         throw new Error('Asset ID is required')
       }
 
@@ -332,6 +330,7 @@ export default function EditCaptionDialog({asset, track, onUpdate, onClose}: Pro
         status: 'error',
         description: error instanceof Error ? error.message : 'Please try again',
       })
+      // oxlint-disable-next-line react/todo
     } finally {
       setIsSubmitting(false)
     }
@@ -345,8 +344,8 @@ export default function EditCaptionDialog({asset, track, onUpdate, onClose}: Pro
       width={1}
       onClickOutside={onClose}
     >
-      <Stack padding={4} space={4}>
-        <Stack space={2}>
+      <Stack padding={4} gap={4}>
+        <Stack gap={2}>
           <Card padding={3} marginBottom={2} tone="transparent" border radius={2}>
             <Flex align="center" justify="space-between">
               <Text>{getCurrentFileName()}</Text>
@@ -396,7 +395,7 @@ export default function EditCaptionDialog({asset, track, onUpdate, onClose}: Pro
               style={{display: 'none'}}
               onChange={(e) => {
                 if (e.target.files && e.target.files.length > 0 && !isSubmitting) {
-                  setSelectedFile(e.target.files[0])
+                  setSelectedFile(e.target.files[0]!)
                   setVttUrl('')
                 }
               }}
@@ -407,8 +406,10 @@ export default function EditCaptionDialog({asset, track, onUpdate, onClose}: Pro
               </Text>
             )}
           </Card>
-          <Stack space={2}>
-            <Label htmlFor="vtt-url">VTT File URL</Label>
+          <Stack gap={2}>
+            <Label as="label" htmlFor="vtt-url">
+              VTT File URL
+            </Label>
             <TextInput
               id="vtt-url"
               placeholder="https://example.com/subtitles.vtt"
@@ -425,8 +426,10 @@ export default function EditCaptionDialog({asset, track, onUpdate, onClose}: Pro
           </Stack>
         </Stack>
 
-        <Stack space={2}>
-          <Label htmlFor="caption-name">Audio name</Label>
+        <Stack gap={2}>
+          <Label as="label" htmlFor="caption-name">
+            Audio name
+          </Label>
           <Autocomplete
             id="caption-name"
             value={selectedLanguage?.value || ''}
@@ -458,8 +461,10 @@ export default function EditCaptionDialog({asset, track, onUpdate, onClose}: Pro
           />
         </Stack>
 
-        <Stack space={2}>
-          <Label htmlFor="caption-language">Language Code</Label>
+        <Stack gap={2}>
+          <Label as="label" htmlFor="caption-language">
+            Language Code
+          </Label>
           <TextInput
             id="caption-language"
             placeholder="en-US"

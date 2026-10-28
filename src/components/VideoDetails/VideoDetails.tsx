@@ -1,17 +1,15 @@
-import {
-  CalendarIcon,
-  CheckmarkIcon,
-  ClockIcon,
-  CropIcon,
-  DownloadIcon,
-  EditIcon,
-  ErrorOutlineIcon,
-  RevertIcon,
-  SearchIcon,
-  SyncIcon,
-  TagIcon,
-  TrashIcon,
-} from '@sanity/icons'
+import {CalendarIcon} from '@sanity/icons/Calendar'
+import {CheckmarkIcon} from '@sanity/icons/Checkmark'
+import {ClockIcon} from '@sanity/icons/Clock'
+import {CropIcon} from '@sanity/icons/Crop'
+import {EditIcon} from '@sanity/icons/Edit'
+import {ErrorOutlineIcon} from '@sanity/icons/ErrorOutline'
+import {RevertIcon} from '@sanity/icons/Revert'
+import {RobotIcon} from '@sanity/icons/Robot'
+import {SearchIcon} from '@sanity/icons/Search'
+import {SyncIcon} from '@sanity/icons/Sync'
+import {TagIcon} from '@sanity/icons/Tag'
+import {TrashIcon} from '@sanity/icons/Trash'
 import {
   Button,
   Card,
@@ -26,20 +24,22 @@ import {
   Text,
   TextInput,
 } from '@sanity/ui'
-import React, {useEffect, useState} from 'react'
+import {type InputEvent, useEffect, useRef, useState} from 'react'
 
 import {DIALOGS_Z_INDEX} from '../../util/constants'
-import {MuxAudioTrack, MuxPlaybackId, MuxTextTrack, PlaybackPolicy} from '../../util/types'
-import AudioTracksManager from '../AudioTracksManager'
-import DownloadAssetDialog from '../DownloadAssetDialog'
+import {isCaptionTrack} from '../../util/tracks'
+import type {MuxPlaybackId, PlaybackPolicy} from '../../util/types'
 import FormField from '../FormField'
 import IconInfo from '../IconInfo'
 import {ResolutionIcon} from '../icons/Resolution'
 import {StopWatchIcon} from '../icons/StopWatch'
+import Mezzanine from '../Mezzanine'
+import {RobotsErrorBoundary} from '../robots/RobotsErrorBoundary'
+import {RobotsPanel} from '../robots/RobotsPanel'
 import TextTracksManager from '../TextTracksManager'
 import VideoPlayer from '../VideoPlayer'
 import DeleteDialog from './DeleteDialog'
-import useVideoDetails, {VideoDetailsProps} from './useVideoDetails'
+import useVideoDetails, {type VideoDetailsProps} from './useVideoDetails'
 import VideoReferences from './VideoReferences'
 
 const AssetInput: React.FC<{
@@ -47,7 +47,7 @@ const AssetInput: React.FC<{
   description?: string
   placeholder?: string
   value: string
-  onInput: (e: React.FormEvent<HTMLInputElement>) => void
+  onInput: (e: InputEvent<HTMLInputElement>) => void
   disabled?: boolean
 }> = (props) => (
   <FormField title={props.label} description={props.description} inputId={props.label}>
@@ -62,7 +62,7 @@ const AssetInput: React.FC<{
 )
 
 const VideoDetails: React.FC<VideoDetailsProps> = (props) => {
-  const [tab, setTab] = useState<'details' | 'references'>('details')
+  const [tab, setTab] = useState<'details' | 'references' | 'robots'>('details')
   const {
     displayInfo,
     filename,
@@ -83,7 +83,7 @@ const VideoDetails: React.FC<VideoDetailsProps> = (props) => {
 
   // Avoid layout shifts in large screens' 2-column dialog by setting their `minHeight` to the container's
   const [containerHeight, setContainerHeight] = useState<number | null>(null)
-  const contentsRef = React.useRef<HTMLDivElement>(null)
+  const contentsRef = useRef<HTMLDivElement>(null)
   useEffect(() => {
     if (!contentsRef.current || !('getBoundingClientRect' in contentsRef.current)) return
 
@@ -126,31 +126,19 @@ const VideoDetails: React.FC<VideoDetailsProps> = (props) => {
                 iconRight={isResyncing && Spinner}
               />
             </Flex>
-            <Flex gap={2}>
+            {modified && (
               <Button
-                icon={DownloadIcon}
+                icon={CheckmarkIcon}
                 fontSize={2}
                 padding={3}
-                mode="bleed"
-                text="Download"
-                tone="default"
-                onClick={() => setState('downloading')}
-                disabled={isSaving}
+                mode="ghost"
+                text="Save and close"
+                tone="positive"
+                onClick={saveChanges}
+                iconRight={isSaving && Spinner}
+                disabled={isSaving || isResyncing}
               />
-              {modified && (
-                <Button
-                  icon={CheckmarkIcon}
-                  fontSize={2}
-                  padding={3}
-                  mode="ghost"
-                  text="Save and close"
-                  tone="positive"
-                  onClick={saveChanges}
-                  iconRight={isSaving && Spinner}
-                  disabled={isSaving || isResyncing}
-                />
-              )}
-            </Flex>
+            )}
           </Flex>
         </Card>
       }
@@ -165,15 +153,6 @@ const VideoDetails: React.FC<VideoDetailsProps> = (props) => {
           succeededDeleting={() => {
             props.closeDialog()
           }}
-        />
-      )}
-
-      {/* DOWNLOAD DIALOG */}
-      {state === 'downloading' && (
-        <DownloadAssetDialog
-          asset={props.asset}
-          onClose={() => setState('idle')}
-          absolute={true}
         />
       )}
 
@@ -215,7 +194,7 @@ const VideoDetails: React.FC<VideoDetailsProps> = (props) => {
           }
         >
           <Card padding={5}>
-            <Stack style={{textAlign: 'center'}} space={3}>
+            <Stack style={{textAlign: 'center'}} gap={3}>
               <Heading size={2}>Unsaved changes will be lost</Heading>
               <Text size={2}>Are you sure you want to discard them?</Text>
             </Stack>
@@ -243,9 +222,10 @@ const VideoDetails: React.FC<VideoDetailsProps> = (props) => {
               : undefined
           }
         >
-          <Stack space={4} flex={1} sizing="border">
+          <Stack gap={4} flex={1} sizing="border">
             <VideoPlayer asset={props.asset} autoPlay={props.asset.autoPlay || false} />
-            {tab === 'details' && (
+            {/* Kept on the Robots tab too, so the captions stay in view while a job runs. */}
+            {tab !== 'references' && (
               <>
                 <TextTracksManager
                   asset={props.asset}
@@ -253,29 +233,16 @@ const VideoDetails: React.FC<VideoDetailsProps> = (props) => {
                   collapseTracks
                   tracks={
                     displayInfo?.text_tracks ||
-                    props.asset.data?.tracks?.filter(
-                      (track): track is MuxTextTrack => track.type === 'text'
-                    ) ||
+                    props.asset.data?.tracks?.filter(isCaptionTrack) ||
                     []
                   }
                 />
-                <AudioTracksManager
-                  asset={props.asset}
-                  iconOnly
-                  collapseTracks
-                  tracks={
-                    displayInfo?.audio_tracks ||
-                    props.asset.data?.tracks?.filter(
-                      (track): track is MuxAudioTrack => track.type === 'audio'
-                    ) ||
-                    []
-                  }
-                />
+                <Mezzanine asset={props.asset} />
               </>
             )}
           </Stack>
-          <Stack space={4} flex={1} sizing="border">
-            <TabList space={2}>
+          <Stack gap={4} flex={1} sizing="border">
+            <TabList gap={2}>
               <Tab
                 aria-controls="details-panel"
                 icon={EditIcon}
@@ -283,6 +250,14 @@ const VideoDetails: React.FC<VideoDetailsProps> = (props) => {
                 label="Details"
                 onClick={() => setTab('details')}
                 selected={tab === 'details'}
+              />
+              <Tab
+                aria-controls="robots-panel"
+                icon={RobotIcon}
+                id="robots-tab"
+                label="Robots"
+                onClick={() => setTab('robots')}
+                selected={tab === 'robots'}
               />
               <Tab
                 aria-controls="references-panel"
@@ -299,7 +274,7 @@ const VideoDetails: React.FC<VideoDetailsProps> = (props) => {
               hidden={tab !== 'details'}
               style={{wordBreak: 'break-word'}}
             >
-              <Stack space={4}>
+              <Stack gap={4}>
                 <AssetInput
                   label="Video title or file name"
                   description="Not visible to users. Useful for finding videos later."
@@ -307,7 +282,7 @@ const VideoDetails: React.FC<VideoDetailsProps> = (props) => {
                   onInput={(e) => setFilename(e.currentTarget.value)}
                   disabled={state !== 'idle'}
                 />
-                <Stack space={3}>
+                <Stack gap={3}>
                   {displayInfo?.duration && (
                     <IconInfo
                       text={`Duration: ${displayInfo.duration}`}
@@ -359,6 +334,13 @@ const VideoDetails: React.FC<VideoDetailsProps> = (props) => {
               hidden={tab !== 'references'}
             >
               <VideoReferences references={references} isLoaded={!referencesLoading} />
+            </TabPanel>
+            <TabPanel aria-labelledby="robots-tab" id="robots-panel" hidden={tab !== 'robots'}>
+              {tab === 'robots' && (
+                <RobotsErrorBoundary>
+                  <RobotsPanel asset={props.asset} config={props.config} />
+                </RobotsErrorBoundary>
+              )}
             </TabPanel>
           </Stack>
         </Flex>

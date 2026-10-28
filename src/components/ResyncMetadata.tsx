@@ -1,4 +1,6 @@
-import {CheckmarkCircleIcon, ErrorOutlineIcon, SyncIcon} from '@sanity/icons'
+import {CheckmarkCircleIcon} from '@sanity/icons/CheckmarkCircle'
+import {ErrorOutlineIcon} from '@sanity/icons/ErrorOutline'
+import {SyncIcon} from '@sanity/icons/Sync'
 import {Box, Button, Card, Dialog, Flex, Heading, Radio, Spinner, Stack, Text} from '@sanity/ui'
 import {useState} from 'react'
 
@@ -48,7 +50,7 @@ function OptionCard({
             name="sync-option"
           />
         </Box>
-        <Stack space={2} flex={1}>
+        <Stack gap={2} flex={1}>
           <Flex align="center" gap={2}>
             <Text size={2} weight="semibold">
               {title} ({count})
@@ -69,7 +71,7 @@ function ResyncMetadataDialog(props: ReturnType<typeof useResyncMuxMetadata>) {
   const videosToUpdate = props.matchedAssets?.filter((m) => m.muxAsset).length || 0
   const videosWithEmptyOrPlaceholder =
     props.matchedAssets?.filter(
-      (m) => m.muxAsset && m.muxTitle && isEmptyOrPlaceholderTitle(m.currentTitle, m.muxAsset.id)
+      (m) => m.muxAsset && m.muxTitle && isEmptyOrPlaceholderTitle(m.currentTitle, m.muxAsset.id),
     ).length || 0
 
   const hasEmptyTitles = videosWithEmptyOrPlaceholder > 0
@@ -84,13 +86,13 @@ function ResyncMetadataDialog(props: ReturnType<typeof useResyncMuxMetadata>) {
   const handleSync = () => {
     switch (selectedOption) {
       case 'fillEmpty':
-        props.syncOnlyEmpty()
+        void props.syncOnlyEmpty()
         break
       case 'syncTitles':
-        props.syncAllVideos()
+        void props.syncAllVideos()
         break
       case 'fullResync':
-        props.syncFullData()
+        void props.syncFullData()
         break
       default:
         break
@@ -140,7 +142,7 @@ function ResyncMetadataDialog(props: ReturnType<typeof useResyncMuxMetadata>) {
           <Card tone="primary" marginBottom={4} padding={3} border radius={2}>
             <Flex align="center" gap={4}>
               <Spinner muted size={4} />
-              <Stack space={2}>
+              <Stack gap={2}>
                 <Text size={2} weight="semibold">
                   Loading assets from Mux
                 </Text>
@@ -157,7 +159,7 @@ function ResyncMetadataDialog(props: ReturnType<typeof useResyncMuxMetadata>) {
           <Card tone="critical" marginBottom={4} padding={3} border radius={2}>
             <Flex align="center" gap={2}>
               <ErrorOutlineIcon fontSize={36} />
-              <Stack space={2}>
+              <Stack gap={2}>
                 <Text size={2} weight="semibold">
                   There was an error getting data from Mux
                 </Text>
@@ -172,7 +174,7 @@ function ResyncMetadataDialog(props: ReturnType<typeof useResyncMuxMetadata>) {
           <Card tone="primary" marginBottom={4} padding={3} border radius={2}>
             <Flex align="center" gap={4}>
               <Spinner muted size={4} />
-              <Stack space={2}>
+              <Stack gap={2}>
                 <Text size={2} weight="semibold">
                   Syncing metadata
                 </Text>
@@ -189,7 +191,7 @@ function ResyncMetadataDialog(props: ReturnType<typeof useResyncMuxMetadata>) {
           <Card tone="critical" marginBottom={4} padding={3} border radius={2}>
             <Flex align="center" gap={2}>
               <ErrorOutlineIcon fontSize={36} />
-              <Stack space={2}>
+              <Stack gap={2}>
                 <Text size={2} weight="semibold">
                   There was an error syncing metadata
                 </Text>
@@ -205,7 +207,7 @@ function ResyncMetadataDialog(props: ReturnType<typeof useResyncMuxMetadata>) {
 
         {/* SUCCESS STATE */}
         {resyncState === 'done' && (
-          <Stack paddingY={5} space={3} style={{textAlign: 'center'}}>
+          <Stack paddingY={5} gap={3} style={{textAlign: 'center'}}>
             <Box>
               <CheckmarkCircleIcon fontSize={48} />
             </Box>
@@ -218,12 +220,12 @@ function ResyncMetadataDialog(props: ReturnType<typeof useResyncMuxMetadata>) {
 
         {/* OPTIONS */}
         {!isDone && !isLoading && !props.muxAssets.error && (
-          <Stack space={4}>
+          <Stack gap={4}>
             <Text size={1} muted>
               Found {videosToUpdate} video{videosToUpdate === 1 ? '' : 's'} linked to Mux.
             </Text>
 
-            <Stack space={3}>
+            <Stack gap={3}>
               {hasEmptyTitles && (
                 <OptionCard
                   id="fillEmpty"
@@ -271,10 +273,8 @@ export default function ResyncMetadata() {
   }
 
   if (resyncMetadata.dialogOpen) {
-    // eslint-disable-next-line consistent-return
     return <ResyncMetadataDialog {...resyncMetadata} />
   }
 
-  // eslint-disable-next-line consistent-return
   return <Button mode="bleed" text="Sync with Mux" onClick={resyncMetadata.openDialog} />
 }

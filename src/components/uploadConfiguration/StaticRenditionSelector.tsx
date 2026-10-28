@@ -1,9 +1,9 @@
 import {Checkbox, Flex, Label, Radio, Stack, Text} from '@sanity/ui'
-import {ActionDispatch, useMemo, useState} from 'react'
+import {type ActionDispatch, useMemo, useState} from 'react'
 import {FormField} from 'sanity'
 
 import {type StaticRenditionResolution, type UploadConfig} from '../../util/types'
-import {UploadConfigurationStateAction} from '../UploadConfiguration'
+import {type UploadConfigurationStateAction} from '../UploadConfiguration'
 
 const ADVANCED_RESOLUTIONS: {value: StaticRenditionResolution; label: string}[] = [
   {value: '270p', label: '270p'},
@@ -28,13 +28,13 @@ export const StaticRenditionSelector = ({
   // Determine if user is in advanced mode based on selected renditions
   const isAdvancedMode = useMemo(() => {
     const specificResolutions = config.static_renditions.filter(
-      (r) => r !== 'highest' && r !== 'audio-only'
+      (r) => r !== 'highest' && r !== 'audio-only',
     )
     return specificResolutions.length > 0
   }, [config.static_renditions])
 
   const [renditionMode, setRenditionMode] = useState<'standard' | 'advanced'>(
-    isAdvancedMode ? 'advanced' : 'standard'
+    isAdvancedMode ? 'advanced' : 'standard',
   )
 
   // Helper to toggle a rendition
@@ -73,12 +73,13 @@ export const StaticRenditionSelector = ({
     }
   }
   return (
-    <Stack space={3}>
+    <Stack gap={3}>
       <FormField
+        path={[]}
         title="Static Renditions"
         description="Generate downloadable MP4 or M4A files. Note: Mux will not upscale to produce MP4 renditions - renditions that would cause upscaling are skipped."
       >
-        <Stack space={3}>
+        <Stack gap={3}>
           {/* Mode Selector */}
           <Flex gap={3}>
             <Flex align="center" gap={2}>
@@ -109,7 +110,7 @@ export const StaticRenditionSelector = ({
 
           {/* Standard Mode Options */}
           {renditionMode === 'standard' && (
-            <Stack space={2}>
+            <Stack gap={2}>
               <Flex align="center" gap={2} padding={[0, 2]}>
                 <Checkbox
                   id={`${id}--highest`}
@@ -137,7 +138,7 @@ export const StaticRenditionSelector = ({
 
           {/* Advanced Mode Options */}
           {renditionMode === 'advanced' && (
-            <Stack space={2}>
+            <Stack gap={2}>
               <Label size={1} muted>
                 Select specific resolutions:
               </Label>

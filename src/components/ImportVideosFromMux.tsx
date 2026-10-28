@@ -1,23 +1,10 @@
-import {
-  CheckmarkCircleIcon,
-  ErrorOutlineIcon,
-  InfoOutlineIcon,
-  RetrieveIcon,
-  RetryIcon,
-} from '@sanity/icons'
-import {
-  Box,
-  Button,
-  Card,
-  Checkbox,
-  Code,
-  Dialog,
-  Flex,
-  Heading,
-  Spinner,
-  Stack,
-  Text,
-} from '@sanity/ui'
+import {CheckmarkCircleIcon} from '@sanity/icons/CheckmarkCircle'
+import {ErrorOutlineIcon} from '@sanity/icons/ErrorOutline'
+import {InfoOutlineIcon} from '@sanity/icons/InfoOutline'
+import {RetrieveIcon} from '@sanity/icons/Retrieve'
+import {RetryIcon} from '@sanity/icons/Retry'
+import {Box, Button, Card, Checkbox, Dialog, Flex, Heading, Spinner, Stack, Text} from '@sanity/ui'
+import {Code} from '@sanity/ui/code'
 import {truncateString, useFormattedDuration} from 'sanity'
 import {styled} from 'styled-components'
 
@@ -77,7 +64,7 @@ function MissingAsset({
           }}
           width={150}
         />
-        <Stack space={2}>
+        <Stack gap={2}>
           <Flex align="center" gap={1}>
             <Code size={2}>{truncateString(asset.id, 15)}</Code>{' '}
             <Text muted size={2}>
@@ -98,7 +85,6 @@ function MissingAsset({
   )
 }
 
-// eslint-disable-next-line complexity
 function ImportVideosDialog(props: ReturnType<typeof useImportMuxAssets>) {
   const {importState} = props
 
@@ -160,7 +146,7 @@ function ImportVideosDialog(props: ReturnType<typeof useImportMuxAssets>) {
           <Card tone="caution" marginBottom={5} padding={3} border>
             <Flex align="center" gap={2}>
               <InfoOutlineIcon fontSize={36} />
-              <Stack space={2}>
+              <Stack gap={2}>
                 <Text size={2} weight="semibold">
                   Some videos were skipped
                 </Text>
@@ -178,7 +164,7 @@ function ImportVideosDialog(props: ReturnType<typeof useImportMuxAssets>) {
           <Card tone="primary" marginBottom={5} padding={3} border>
             <Flex align="center" gap={4}>
               <Spinner muted size={4} />
-              <Stack space={2}>
+              <Stack gap={2}>
                 <Text size={2} weight="semibold">
                   Loading assets from Mux
                 </Text>
@@ -198,7 +184,7 @@ function ImportVideosDialog(props: ReturnType<typeof useImportMuxAssets>) {
           <Card tone="critical" marginBottom={5} padding={3} border>
             <Flex align="center" gap={2}>
               <ErrorOutlineIcon fontSize={36} />
-              <Stack space={2}>
+              <Stack gap={2}>
                 <Text size={2} weight="semibold">
                   There was an error getting all data from Mux
                 </Text>
@@ -217,7 +203,7 @@ function ImportVideosDialog(props: ReturnType<typeof useImportMuxAssets>) {
           <Card tone="primary" marginBottom={5} padding={3} border>
             <Flex align="center" gap={4}>
               <Spinner muted size={4} />
-              <Stack space={2}>
+              <Stack gap={2}>
                 <Text size={2} weight="semibold">
                   Importing {props.selectedAssets.length} video
                   {props.selectedAssets.length > 1 && 's'} from Mux
@@ -232,7 +218,7 @@ function ImportVideosDialog(props: ReturnType<typeof useImportMuxAssets>) {
           <Card tone="critical" marginBottom={5} padding={3} border>
             <Flex align="center" gap={2}>
               <ErrorOutlineIcon fontSize={36} />
-              <Stack space={2}>
+              <Stack gap={2}>
                 <Text size={2} weight="semibold">
                   There was an error importing videos
                 </Text>
@@ -256,7 +242,7 @@ function ImportVideosDialog(props: ReturnType<typeof useImportMuxAssets>) {
 
         {/* NO ASSETS TO IMPORT or SUCESS STATE */}
         {(noAssetsToImport || importState === 'done') && (
-          <Stack paddingY={5} marginBottom={4} space={3} style={{textAlign: 'center'}}>
+          <Stack paddingY={5} marginBottom={4} gap={3} style={{textAlign: 'center'}}>
             <Box>
               <CheckmarkCircleIcon fontSize={48} />
             </Box>
@@ -277,7 +263,7 @@ function ImportVideosDialog(props: ReturnType<typeof useImportMuxAssets>) {
         {props.missingAssets &&
           props.missingAssets.length > 0 &&
           (importState === 'idle' || importState === 'error') && (
-            <Stack space={4}>
+            <Stack gap={4}>
               <Heading size={1}>
                 There are {props.missingAssets.length}
                 {props.muxAssets.loading && '+'} Mux video{props.missingAssets.length > 1 && 's'}{' '}
@@ -333,10 +319,8 @@ export default function ImportVideosFromMux() {
   }
 
   if (importAssets.dialogOpen) {
-    // eslint-disable-next-line consistent-return
     return <ImportVideosDialog {...importAssets} />
   }
 
-  // eslint-disable-next-line consistent-return
   return <Button mode="bleed" text="Import from Mux" onClick={importAssets.openDialog} />
 }

@@ -1,7 +1,7 @@
 import {Button, Card, Dialog, Stack, Text} from '@sanity/ui'
-import React, {createContext, useContext, useState} from 'react'
+import {createContext, useCallback, useContext, useMemo, useState} from 'react'
 
-import {PluginConfig} from '../util/types'
+import {type PluginConfig} from '../util/types'
 
 const LOCAL_STORAGE_HAS_SHOWN_WARNING_KEY = 'mux-plugin-has-shown-drm-playback-warning'
 
@@ -31,17 +31,21 @@ export const DrmPlaybackWarningContextProvider = ({
     warningDisabled || window.localStorage.getItem(LOCAL_STORAGE_HAS_SHOWN_WARNING_KEY) === 'true'
   const [hasWarnedAboutDrmPlayback, setHasWarnedAboutDrmPlayback] = useState(hasWarned)
 
-  const setHasShownWarning = (b: boolean) => {
+  const setHasShownWarning = useCallback((b: boolean) => {
     window.localStorage.setItem(LOCAL_STORAGE_HAS_SHOWN_WARNING_KEY, b.toString())
     setHasWarnedAboutDrmPlayback(b)
-  }
+  }, [])
+
+  const value = useMemo(
+    () => ({
+      hasShownWarning: hasWarnedAboutDrmPlayback,
+      setHasWarnedAboutDrmPlayback: setHasShownWarning,
+    }),
+    [hasWarnedAboutDrmPlayback, setHasShownWarning],
+  )
+
   return (
-    <DrmPlaybackWarningContext.Provider
-      value={{
-        hasShownWarning: hasWarnedAboutDrmPlayback,
-        setHasWarnedAboutDrmPlayback: setHasShownWarning,
-      }}
-    >
+    <DrmPlaybackWarningContext.Provider value={value}>
       {children}
     </DrmPlaybackWarningContext.Provider>
   )
@@ -70,9 +74,9 @@ export const DRMWarningDialog = ({onClose}: {onClose: () => void}) => {
         </Stack>
       }
     >
-      <Stack space={3} padding={3}>
+      <Stack gap={3} padding={3}>
         <Card padding={[3, 3, 3]} radius={2}>
-          <Stack space={3}>
+          <Stack gap={3}>
             <Text size={1} weight="semibold">
               DRM-protected playback will generate a license with a small associated cost. The
               plugin will attempt to play signed or public playback IDs instead whenever possible.
@@ -80,7 +84,7 @@ export const DRMWarningDialog = ({onClose}: {onClose: () => void}) => {
           </Stack>
         </Card>
         <Card padding={[3, 3, 3]} radius={2} tone="suggest">
-          <Stack space={3}>
+          <Stack gap={3}>
             <Text size={1} weight="semibold">
               This is a one time warning. If it persists, you can disable it from your plugin
               configuration.

@@ -1,10 +1,10 @@
-import {PlugIcon} from '@sanity/icons'
+import {PlugIcon} from '@sanity/icons/Plug'
 import {Button, Card, Flex, Grid, Heading, Inline, Text} from '@sanity/ui'
 import {useCallback} from 'react'
 
 import {useAccessControl} from '../hooks/useAccessControl'
 import type {SetDialogState} from '../hooks/useDialogState'
-import {PluginConfig} from '../util/types'
+import {type PluginConfig} from '../util/types'
 import MuxLogo from './MuxLogo'
 
 interface OnboardProps {
@@ -33,7 +33,7 @@ export default function Onboard(props: OnboardProps) {
           tone="transparent"
         >
           <Flex justify="flex-start" align="center">
-            <Grid columns={1} gap={[2, 3, 4, 4]}>
+            <Grid gridTemplateColumns={1} gap={[2, 3, 4, 4]}>
               <Inline paddingY={1}>
                 <div style={{height: '32px'}}>
                   <MuxLogo />

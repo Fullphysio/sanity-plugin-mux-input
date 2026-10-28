@@ -1,13 +1,17 @@
 import type {SanityClient} from 'sanity'
 
-import type {MuxAsset, VideoAssetDocument} from '../util/types'
+import {getMuxAddonClient} from '../util/muxAddonClient'
+import {PLUGIN_VERSION_QUERY} from '../util/pluginVersion'
+import type {MuxAsset, MuxPlaybackId, PlaybackPolicy, VideoAssetDocument} from '../util/types'
+import {toRobotsRequestError} from './robots'
 
 export function deleteAssetOnMux(client: SanityClient, assetId: string) {
   const {dataset} = client.config()
-  return client.request<void>({
+  return getMuxAddonClient(client).request<void>({
     url: `/addons/mux/assets/${dataset}/${assetId}`,
     withCredentials: true,
     method: 'DELETE',
+    query: PLUGIN_VERSION_QUERY,
   })
 }
 
@@ -24,14 +28,14 @@ export async function deleteAsset({
 
   try {
     await client.delete(asset._id)
-  } catch (error) {
+  } catch {
     return 'failed-sanity'
   }
 
   if (deleteOnMux && asset?.assetId) {
     try {
       await deleteAssetOnMux(client, asset.assetId)
-    } catch (error) {
+    } catch {
       return 'failed-mux'
     }
   }
@@ -41,16 +45,17 @@ export async function deleteAsset({
 
 export function getAsset(client: SanityClient, assetId: string) {
   const {dataset} = client.config()
-  return client.request<{data: MuxAsset}>({
+  return getMuxAddonClient(client).request<{data: MuxAsset}>({
     url: `/addons/mux/assets/${dataset}/data/${assetId}`,
     withCredentials: true,
     method: 'GET',
+    query: PLUGIN_VERSION_QUERY,
   })
 }
 
 export function listAssets(
   client: SanityClient,
-  options: {limit?: number; cursor?: string | null}
+  options: {limit?: number; cursor?: string | null},
 ) {
   const {dataset} = client.config()
   const query: {limit?: string; cursor?: string} = {}
@@ -62,11 +67,11 @@ export function listAssets(
     query.cursor = options.cursor
   }
 
-  return client.request<{data: MuxAsset[]; next_cursor?: string | null}>({
+  return getMuxAddonClient(client).request<{data: MuxAsset[]; next_cursor?: string | null}>({
     url: `/addons/mux/assets/${dataset}/data/list`,
     withCredentials: true,
     method: 'GET',
-    query,
+    query: {...query, ...PLUGIN_VERSION_QUERY},
   })
 }
 
@@ -80,12 +85,12 @@ export function addTextTrackFromUrl(
   options: {
     language_code: string
     name: string
-    text_type?: 'subtitles'
-  }
+    text_type?: 'subtitles' | 'chapters'
+  },
 ) {
   const {dataset} = client.config()
 
-  return client.request<{data: MuxAsset}>({
+  return getMuxAddonClient(client).request<{data: MuxAsset}>({
     url: `/addons/mux/assets/${dataset}/${assetId}/tracks`,
     withCredentials: true,
     method: 'POST',
@@ -99,37 +104,7 @@ export function addTextTrackFromUrl(
     headers: {
       'Content-Type': 'application/json',
     },
-  })
-}
-
-/**
- * Adds a new alternative audio track to an existing asset using an audio file URL.
- * Mux accepts most common audio formats (M4A, WAV, MP3) and requires the asset to be `ready`.
- */
-export function addAudioTrackFromUrl(
-  client: SanityClient,
-  assetId: string,
-  audioUrl: string,
-  options: {
-    language_code: string
-    name?: string
-  }
-) {
-  const {dataset} = client.config()
-
-  return client.request<{data: MuxAsset}>({
-    url: `/addons/mux/assets/${dataset}/${assetId}/tracks`,
-    withCredentials: true,
-    method: 'POST',
-    body: {
-      url: audioUrl,
-      type: 'audio',
-      language_code: options.language_code,
-      ...(options.name ? {name: options.name} : {}),
-    },
-    headers: {
-      'Content-Type': 'application/json',
-    },
+    query: PLUGIN_VERSION_QUERY,
   })
 }
 
@@ -143,10 +118,10 @@ export function generateSubtitles(
   options: {
     language_code: string
     name: string
-  }
+  },
 ) {
   const {dataset} = client.config()
-  return client.request<{data: MuxAsset}>({
+  return getMuxAddonClient(client).request<{data: MuxAsset}>({
     url: `/addons/mux/assets/${dataset}/${assetId}/tracks/${audioTrackId}/generate-subtitles`,
     withCredentials: true,
     method: 'POST',
@@ -161,18 +136,7 @@ export function generateSubtitles(
     headers: {
       'Content-Type': 'application/json',
     },
-  })
-}
-
-/**
- * Deletes a track (text or audio) from an asset
- */
-export function deleteAssetTrack(client: SanityClient, assetId: string, trackId: string) {
-  const {dataset} = client.config()
-  return client.request<{data: MuxAsset}>({
-    url: `/addons/mux/assets/${dataset}/${assetId}/tracks/${trackId}`,
-    withCredentials: true,
-    method: 'DELETE',
+    query: PLUGIN_VERSION_QUERY,
   })
 }
 
@@ -180,35 +144,59 @@ export function deleteAssetTrack(client: SanityClient, assetId: string, trackId:
  * Deletes a text track from an asset
  */
 export function deleteTextTrack(client: SanityClient, assetId: string, trackId: string) {
-  return deleteAssetTrack(client, assetId, trackId)
+  const {dataset} = client.config()
+  return getMuxAddonClient(client).request<{data: MuxAsset}>({
+    url: `/addons/mux/assets/${dataset}/${assetId}/tracks/${trackId}`,
+    withCredentials: true,
+    method: 'DELETE',
+    query: PLUGIN_VERSION_QUERY,
+  })
 }
 
 /**
- * Deletes an alternative audio track from an asset.
- * The primary audio track can't be deleted.
+ * Updates master access (the "mezzanine" file in Mux's docs) on a Mux asset, via the addon proxy.
+ * @see {@link https://docs.mux.com/api-reference/video/assets/update-asset-master-access}
  */
-export function deleteAudioTrack(client: SanityClient, assetId: string, trackId: string) {
-  return deleteAssetTrack(client, assetId, trackId)
-}
-
-/**
- * Updates master access on a Mux asset.
- */
-export async function updateMasterAccess(
+export function updateMasterAccess(
   client: SanityClient,
   assetId: string,
-  masterAccess: 'temporary' | 'none'
+  masterAccess: 'temporary' | 'none',
 ) {
-  const fpCredentials = await client.fetch<{fpMuxProxyUrl: string, fpMuxProxyApiKey: string}>(`*[_id == "secrets.fullphysio"][0]`)
-  return fetch(fpCredentials.fpMuxProxyUrl, {
+  const {dataset} = client.config()
+  return getMuxAddonClient(client).request<{data: MuxAsset}>({
+    url: `/addons/mux/assets/${dataset}/${assetId}/master-access`,
+    withCredentials: true,
     method: 'PUT',
+    body: {master_access: masterAccess},
     headers: {
       'Content-Type': 'application/json',
-      'x-api-key': fpCredentials.fpMuxProxyApiKey,
     },
-    body: JSON.stringify({
-      asset_id: assetId,
-      master_access: masterAccess,
-    }),
-  });
+    query: PLUGIN_VERSION_QUERY,
+  })
+}
+
+/**
+ * Creates a playback ID, e.g. after Robots `moderate` deleted them all. The proxy answers like
+ * the Robots routes, so failures are `RobotsRequestError`s; a 404 without `mux` means the proxy
+ * doesn't have the route yet.
+ */
+export async function createPlaybackId(
+  client: SanityClient,
+  assetId: string,
+  policy: PlaybackPolicy,
+  drmConfigurationId?: string,
+) {
+  const {dataset} = client.config()
+  try {
+    return await getMuxAddonClient(client).request<{data: MuxPlaybackId}>({
+      url: `/addons/mux/assets/${dataset}/${assetId}/playback-ids`,
+      withCredentials: true,
+      method: 'POST',
+      body: policy === 'drm' ? {policy, drm_configuration_id: drmConfigurationId} : {policy},
+      headers: {'Content-Type': 'application/json'},
+      query: PLUGIN_VERSION_QUERY,
+    })
+  } catch (error) {
+    throw toRobotsRequestError(error)
+  }
 }

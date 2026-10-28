@@ -1,9 +1,11 @@
 import {type MuxPlayerProps, type MuxPlayerRefAttributes} from '@mux/mux-player-react'
 import MuxPlayer from '@mux/mux-player-react/lazy'
-import {ErrorOutlineIcon} from '@sanity/icons'
+import {ErrorOutlineIcon} from '@sanity/icons/ErrorOutline'
+import {PlayIcon} from '@sanity/icons/Play'
 import {Card, Text} from '@sanity/ui'
 import {type PropsWithChildren, Suspense, useMemo, useRef, useState} from 'react'
 
+import {PLUGIN_VERSION} from '../constants'
 import {useDialogStateContext} from '../context/DialogStateContext'
 import {useClient} from '../hooks/useClient'
 import {AUDIO_ASPECT_RATIO, MIN_ASPECT_RATIO} from '../util/constants'
@@ -12,19 +14,23 @@ import {getPlaybackId} from '../util/getPlaybackPolicy'
 import {getPlaybackPolicyById} from '../util/getPlaybackPolicy'
 import {getPosterSrc} from '../util/getPosterSrc'
 import {getVideoSrc} from '../util/getVideoSrc'
+import {readyTracksKey} from '../util/tracks'
 import {tryWithSuspend} from '../util/tryWithSuspend'
 import type {VideoAssetDocument} from '../util/types'
-import AudioTracksDialog from './AudioTracksDialog'
 import CaptionsDialog from './CaptionsDialog'
-import DownloadAssetDialog from './DownloadAssetDialog'
 import EditThumbnailDialog from './EditThumbnailDialog'
 import {AudioIcon} from './icons/Audio'
+import MezzanineDialog from './MezzanineDialog'
+import {NoPlaybackIdNotice} from './NoPlaybackIdNotice'
+import {PlayButton} from './PlayButton'
 
 export default function VideoPlayer({
   asset,
   thumbnailWidth = 250,
   children,
   hlsConfig,
+  deferPlayer = false,
+  readOnly,
   ...props
 }: PropsWithChildren<
   {
@@ -32,6 +38,13 @@ export default function VideoPlayer({
     thumbnailWidth?: number
     forceAspectRatio?: number
     hlsConfig?: MuxPlayerProps['_hlsConfig']
+    /**
+     * Render the poster as a play button and mount `<MuxPlayer>` only once it's clicked.
+     * Mounting the player's media-chrome controls forces many full-document layouts,
+     * which freezes Safari for seconds when a form shows several video fields.
+     */
+    deferPlayer?: boolean
+    readOnly?: boolean
   } & Partial<Pick<MuxPlayerProps, 'autoPlay'>>
 >) {
   const client = useClient()
@@ -39,44 +52,39 @@ export default function VideoPlayer({
 
   const isAudio = assetIsAudio(asset)
   const muxPlayer = useRef<MuxPlayerRefAttributes>(null)
+  const playerContainerRef = useRef<HTMLDivElement>(null)
   const [error, setError] = useState<Error>()
+  const [playerRequested, setPlayerRequested] = useState(false)
+  const showPlayer = !deferPlayer || playerRequested
 
+  // Robots `moderate` can delete every playback ID; the notice below says how to restore one.
+  const hasPlaybackIds = !!asset.data?.playback_ids?.length
   /* Playback ID that will be used to play the video */
-  const playbackId = useMemo(() => {
-    try {
-      return getPlaybackId(asset, ['public', 'signed', 'drm'])
-    } catch (e) {
-      setError(new TypeError('Asset has no playback ID'))
-      return undefined
-    }
-  }, [asset])
-
-  const muxPlaybackId = useMemo(() => {
-    if (!playbackId) return undefined
-    return getPlaybackPolicyById(asset, playbackId)
-  }, [asset, playbackId])
+  const playbackId = hasPlaybackIds ? getPlaybackId(asset, ['public', 'signed', 'drm']) : undefined
+  // Strings, so an unrelated document change doesn't sign a new token and reload the player.
+  const policy = playbackId ? getPlaybackPolicyById(asset, playbackId)?.policy : undefined
 
   const src = useMemo(() => {
-    if (!playbackId) return undefined
-    if (!muxPlaybackId) return undefined
+    if (!playbackId || !policy) return undefined
     return tryWithSuspend(
-      () => getVideoSrc({muxPlaybackId, client}),
+      () => getVideoSrc({muxPlaybackId: {id: playbackId, policy}, client}),
       (e: Error) => {
         setError(e)
         return undefined
-      }
+      },
     )
-  }, [muxPlaybackId, playbackId, client])
+  }, [playbackId, policy, client])
 
   const poster = useMemo(() => {
+    if (!hasPlaybackIds) return undefined
     return tryWithSuspend(
       () => getPosterSrc({asset, client, width: thumbnailWidth}),
       (e: Error) => {
         setError(e)
         return undefined
-      }
+      },
     )
-  }, [asset, client, thumbnailWidth])
+  }, [asset, client, thumbnailWidth, hasPlaybackIds])
 
   const signedToken = useMemo(() => {
     try {
@@ -88,16 +96,16 @@ export default function VideoPlayer({
   }, [src])
   const drmToken = useMemo(() => {
     if (!playbackId) return undefined
-    if (muxPlaybackId?.policy !== 'drm') return undefined
+    if (policy !== 'drm') return undefined
 
     return tryWithSuspend(
       () => generateJwt(client, playbackId, 'd'),
       (e: Error) => {
         setError(e)
         return undefined
-      }
+      },
     )
-  }, [client, muxPlaybackId?.policy, playbackId])
+  }, [client, policy, playbackId])
   const tokens:
     | Partial<{
         playback?: string
@@ -137,7 +145,7 @@ export default function VideoPlayer({
 
   const [width, height] = (asset?.data?.aspect_ratio ?? '16:9').split(':').map(Number)
   const targetAspectRatio =
-    props.forceAspectRatio || (Number.isNaN(width) ? 16 / 9 : width / height)
+    props.forceAspectRatio || (Number.isNaN(width) ? 16 / 9 : width! / height!)
   let aspectRatio = Math.max(MIN_ASPECT_RATIO, targetAspectRatio)
   if (isAudio) {
     aspectRatio = props.forceAspectRatio
@@ -151,6 +159,7 @@ export default function VideoPlayer({
   return (
     <>
       <Card
+        ref={playerContainerRef}
         tone="transparent"
         style={{
           aspectRatio: aspectRatio,
@@ -173,35 +182,59 @@ export default function VideoPlayer({
                 }}
               />
             )}
-            <Suspense fallback={null}>
-              <MuxPlayer
-                poster={isAudio ? undefined : poster}
-                ref={muxPlayer}
-                {...props}
-                playsInline
-                playbackId={playbackId}
-                tokens={tokens}
-                preload="metadata"
-                crossOrigin="anonymous"
-                metadata={{
-                  player_name: 'Sanity Admin Dashboard',
-                  player_version: process.env.PKG_VERSION,
-                  page_type: 'Preview Player',
-                }}
-                audio={isAudio}
-                _hlsConfig={hlsConfig}
-                style={{
-                  ...(!isAudio && {height: '100%'}),
-                  width: '100%',
-                  display: 'block',
-                  objectFit: 'contain',
-                  ...(isAudio && {alignSelf: 'end'}),
-                }}
-              />
-              {children}
-            </Suspense>
+            {showPlayer ? (
+              <Suspense fallback={null}>
+                <MuxPlayer
+                  // A new caption or audio track reaches the player only with a fresh manifest.
+                  key={readyTracksKey(asset.data?.tracks)}
+                  poster={isAudio ? undefined : poster}
+                  ref={muxPlayer}
+                  {...props}
+                  autoPlay={deferPlayer || props.autoPlay}
+                  playsInline
+                  playbackId={playbackId}
+                  tokens={tokens}
+                  preload="metadata"
+                  crossOrigin="anonymous"
+                  metadata={{
+                    player_name: 'Sanity Admin Dashboard',
+                    player_version: PLUGIN_VERSION,
+                    page_type: 'Preview Player',
+                  }}
+                  audio={isAudio}
+                  _hlsConfig={hlsConfig}
+                  style={{
+                    ...(!isAudio && {height: '100%'}),
+                    width: '100%',
+                    display: 'block',
+                    objectFit: 'contain',
+                    ...(isAudio && {alignSelf: 'end'}),
+                  }}
+                />
+                {children}
+              </Suspense>
+            ) : (
+              <PlayButton
+                type="button"
+                aria-label={isAudio ? 'Play audio' : 'Play video'}
+                onClick={() => setPlayerRequested(true)}
+                style={{position: 'absolute', inset: 0, width: '100%', height: '100%', zIndex: 0}}
+              >
+                {!isAudio && (
+                  <img
+                    src={poster}
+                    alt=""
+                    style={{width: '100%', height: '100%', display: 'block', objectFit: 'contain'}}
+                  />
+                )}
+                <div data-play style={{opacity: 1}}>
+                  <PlayIcon />
+                </div>
+              </PlayButton>
+            )}
           </>
         )}
+        {!hasPlaybackIds && <NoPlaybackIdNotice asset={asset} readOnly={readOnly} />}
         {error ? (
           <div
             style={{
@@ -223,11 +256,14 @@ export default function VideoPlayer({
       </Card>
 
       {dialogState === 'edit-thumbnail' && (
-        <EditThumbnailDialog asset={asset} currentTime={muxPlayer?.current?.currentTime} />
+        <EditThumbnailDialog
+          asset={asset}
+          // oxlint-disable-next-line react/refs
+          currentTime={muxPlayer?.current?.currentTime}
+        />
       )}
       {dialogState === 'edit-captions' && <CaptionsDialog asset={asset} />}
-      {dialogState === 'edit-audio-tracks' && <AudioTracksDialog asset={asset} />}
-      {dialogState === 'download-asset' && <DownloadAssetDialog asset={asset} />}
+      {dialogState === 'mezzanine' && <MezzanineDialog asset={asset} />}
     </>
   )
 }

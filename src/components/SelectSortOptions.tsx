@@ -1,10 +1,12 @@
-import {SortIcon} from '@sanity/icons'
-import {Button, Menu, MenuButton, MenuItem, PopoverProps} from '@sanity/ui'
+import {SortIcon} from '@sanity/icons/Sort'
+import {Button} from '@sanity/ui'
+import {Menu, MenuButton, MenuItem} from '@sanity/ui/menu'
+import {type PopoverProps} from '@sanity/ui/popover'
 import {useId} from 'react'
 
-import {ASSET_SORT_OPTIONS, SortOption} from '../hooks/useAssets'
+import {ASSET_SORT_OPTIONS, type SortOption} from '../hooks/useAssets'
 
-export const CONTEXT_MENU_POPOVER_PROPS: PopoverProps = {
+const CONTEXT_MENU_POPOVER_PROPS: PopoverProps = {
   constrainSize: true,
   placement: 'bottom',
   portal: true,

@@ -1,29 +1,18 @@
-import {
-  DownloadIcon,
-  EllipsisHorizontalIcon,
-  ImageIcon,
-  LockIcon,
-  PlugIcon,
-  ResetIcon,
-  SearchIcon,
-  SyncIcon,
-  TranslateIcon,
-  UploadIcon,
-} from '@sanity/icons'
-import {
-  Box,
-  Button,
-  Card,
-  Inline,
-  Label,
-  Menu,
-  MenuDivider,
-  MenuItem,
-  Popover,
-  Text,
-  Tooltip,
-  useClickOutsideEvent,
-} from '@sanity/ui'
+import {DownloadIcon} from '@sanity/icons/Download'
+import {EllipsisHorizontalIcon} from '@sanity/icons/EllipsisHorizontal'
+import {ImageIcon} from '@sanity/icons/Image'
+import {LockIcon} from '@sanity/icons/Lock'
+import {PlugIcon} from '@sanity/icons/Plug'
+import {ResetIcon} from '@sanity/icons/Reset'
+import {RobotIcon} from '@sanity/icons/Robot'
+import {SearchIcon} from '@sanity/icons/Search'
+import {SyncIcon} from '@sanity/icons/Sync'
+import {TranslateIcon} from '@sanity/icons/Translate'
+import {UploadIcon} from '@sanity/icons/Upload'
+import {Box, Button, Card, Inline, Label, Text, useClickOutsideEvent} from '@sanity/ui'
+import {Menu, MenuDivider, MenuItem} from '@sanity/ui/menu'
+import {Popover} from '@sanity/ui/popover'
+import {Tooltip} from '@sanity/ui/tooltip'
 import {memo, useCallback, useEffect, useMemo, useState} from 'react'
 import {PatchEvent, unset} from 'sanity'
 import {styled} from 'styled-components'
@@ -34,7 +23,6 @@ import {useResyncAsset} from '../hooks/useResyncAsset'
 import {getPlaybackPolicy} from '../util/getPlaybackPolicy'
 import type {MuxInputProps, PluginConfig, VideoAssetDocument} from '../util/types'
 import {FileInputMenuItem} from './FileInputMenuItem'
-import {AudioIcon} from './icons/Audio'
 
 const LockCard = styled(Card)`
   position: absolute;
@@ -63,7 +51,7 @@ function PlayerActionsMenu(
     setDialogState: SetDialogState
     config: PluginConfig
     accept: string
-  }
+  },
 ) {
   const {asset, readOnly, dialogState, setDialogState, onChange, onSelect, accept} = props
   const [open, setOpen] = useState(false)
@@ -81,17 +69,18 @@ function PlayerActionsMenu(
 
   useEffect(() => {
     if (open && dialogState) {
+      // oxlint-disable-next-line react/set-state-in-effect
       setOpen(false)
     }
   }, [dialogState, open])
 
   useClickOutsideEvent(
     () => setOpen(false),
-    () => [menuElement]
+    () => [menuElement],
   )
 
   return (
-    <Inline space={1} padding={2}>
+    <Inline gap={1} padding={2}>
       {isSigned && (
         <Tooltip
           animate
@@ -144,11 +133,7 @@ function PlayerActionsMenu(
                   text="Captions"
                   onClick={() => setDialogState('edit-captions')}
                 />
-                <MenuItem
-                  icon={AudioIcon}
-                  text="Audio tracks"
-                  onClick={() => setDialogState('edit-audio-tracks')}
-                />
+                <MenuItem icon={RobotIcon} text="Robots" onClick={() => setDialogState('robots')} />
                 <MenuItem
                   icon={SyncIcon}
                   text="Resync from Mux"
@@ -160,8 +145,8 @@ function PlayerActionsMenu(
             <MenuDivider />
             <MenuItem
               icon={DownloadIcon}
-              text="Download"
-              onClick={() => setDialogState('download-asset')}
+              text="Mezzanine"
+              onClick={() => setDialogState('mezzanine')}
             />
             <MenuDivider />
             {hasConfigAccess && (
