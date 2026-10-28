@@ -23,6 +23,7 @@ import {useResyncAsset} from '../hooks/useResyncAsset'
 import {getPlaybackPolicy} from '../util/getPlaybackPolicy'
 import type {MuxInputProps, PluginConfig, VideoAssetDocument} from '../util/types'
 import {FileInputMenuItem} from './FileInputMenuItem'
+import {AudioIcon} from './icons/Audio'
 
 const LockCard = styled(Card)`
   position: absolute;
@@ -133,6 +134,11 @@ function PlayerActionsMenu(
                   text="Captions"
                   onClick={() => setDialogState('edit-captions')}
                 />
+                <MenuItem
+                  icon={AudioIcon}
+                  text="Audio tracks"
+                  onClick={() => setDialogState('edit-audio-tracks')}
+                />
                 <MenuItem icon={RobotIcon} text="Robots" onClick={() => setDialogState('robots')} />
                 <MenuItem
                   icon={SyncIcon}
@@ -147,6 +153,11 @@ function PlayerActionsMenu(
               icon={DownloadIcon}
               text="Mezzanine"
               onClick={() => setDialogState('mezzanine')}
+            />
+            <MenuItem
+              icon={DownloadIcon}
+              text="Download"
+              onClick={() => setDialogState('download-asset')}
             />
             <MenuDivider />
             {hasConfigAccess && (

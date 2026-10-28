@@ -17,7 +17,9 @@ import {getVideoSrc} from '../util/getVideoSrc'
 import {readyTracksKey} from '../util/tracks'
 import {tryWithSuspend} from '../util/tryWithSuspend'
 import type {VideoAssetDocument} from '../util/types'
+import AudioTracksDialog from './AudioTracksDialog'
 import CaptionsDialog from './CaptionsDialog'
+import DownloadAssetDialog from './DownloadAssetDialog'
 import EditThumbnailDialog from './EditThumbnailDialog'
 import {AudioIcon} from './icons/Audio'
 import MezzanineDialog from './MezzanineDialog'
@@ -264,6 +266,8 @@ export default function VideoPlayer({
       )}
       {dialogState === 'edit-captions' && <CaptionsDialog asset={asset} />}
       {dialogState === 'mezzanine' && <MezzanineDialog asset={asset} />}
+      {dialogState === 'edit-audio-tracks' && <AudioTracksDialog asset={asset} />}
+      {dialogState === 'download-asset' && <DownloadAssetDialog asset={asset} />}
     </>
   )
 }

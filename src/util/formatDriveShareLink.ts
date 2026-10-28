@@ -12,7 +12,7 @@
 export function formatDriveShareLink(url: string): string {
   // Export link formatter.
   const formatExportLink = (id: string) => {
-    return `https://drive.google.com/uc?export=download&id=${id}`
+    return `https://drive.usercontent.google.com/download?export=download&authuser=0&confirm=t&at=0&id=${id}`
   }
 
   // URL formatting.

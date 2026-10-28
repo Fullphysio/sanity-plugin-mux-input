@@ -13,6 +13,7 @@ import {type DialogState, type SetDialogState} from '../hooks/useDialogState'
 import {isServerError, isValidUrl} from '../util/asserters'
 import {extractDroppedFiles} from '../util/extractFiles'
 import {hasPlaybackPolicy} from '../util/getPlaybackPolicy'
+import {watchAssetForMetadata} from '../util/watchAssetUpdates'
 import type {
   MuxInputProps,
   MuxNewAssetSettings,
@@ -207,6 +208,7 @@ export default function Uploader(props: Props) {
   const startUpload = (
     settings: MuxNewAssetSettings,
     watermark?: import('../util/types').WatermarkConfig,
+    assetName?: string,
   ) => {
     const {stagedUpload} = state
     if (!stagedUpload || uploadRef.current) return
@@ -220,6 +222,7 @@ export default function Uploader(props: Props) {
           url: stagedUpload.url,
           settings,
           watermark,
+          assetName: assetName || undefined,
         })
         break
       case 'file':
@@ -228,6 +231,7 @@ export default function Uploader(props: Props) {
           file: stagedUpload.files[0]!,
           settings,
           watermark,
+          assetName: assetName || undefined,
         }).pipe(
           takeUntil(
             cancelUploadButton.observable.pipe(
@@ -261,12 +265,18 @@ export default function Uploader(props: Props) {
             dispatch({action: 'progress', percent: 100})
             uploadingDocumentId.current = null
             props.onUploadWithDirectives(event.asset._id, directiveIds)
-            props.onChange(
-              PatchEvent.from([
-                setIfMissing({asset: {}}),
-                set({_type: 'reference', _weak: true, _ref: event.asset._id}, ['asset']),
-              ]),
-            )
+            const patches = [
+              setIfMissing({asset: {}, _type: 'mux.video'}),
+              set({_type: 'reference', _weak: true, _ref: event.asset._id}, ['asset']),
+            ]
+            if (props.config.inlineAssetMetadata) {
+              patches.push(setIfMissing({data: {}}))
+              patches.push(set({_type: 'metadata', ...(event.asset.data ?? {})}, ['data']))
+            }
+            props.onChange(PatchEvent.from(patches))
+            if (props.config.inlineAssetMetadata) {
+              watchAssetForMetadata(event.asset._id, props)
+            }
             break
           case 'pause':
           case 'resume':

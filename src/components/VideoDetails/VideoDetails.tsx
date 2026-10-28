@@ -2,6 +2,7 @@ import {CalendarIcon} from '@sanity/icons/Calendar'
 import {CheckmarkIcon} from '@sanity/icons/Checkmark'
 import {ClockIcon} from '@sanity/icons/Clock'
 import {CropIcon} from '@sanity/icons/Crop'
+import {DownloadIcon} from '@sanity/icons/Download'
 import {EditIcon} from '@sanity/icons/Edit'
 import {ErrorOutlineIcon} from '@sanity/icons/ErrorOutline'
 import {RevertIcon} from '@sanity/icons/Revert'
@@ -28,7 +29,9 @@ import {type InputEvent, useEffect, useRef, useState} from 'react'
 
 import {DIALOGS_Z_INDEX} from '../../util/constants'
 import {isCaptionTrack} from '../../util/tracks'
-import type {MuxPlaybackId, PlaybackPolicy} from '../../util/types'
+import type {MuxAudioTrack, MuxPlaybackId, PlaybackPolicy} from '../../util/types'
+import AudioTracksManager from '../AudioTracksManager'
+import DownloadAssetDialog from '../DownloadAssetDialog'
 import FormField from '../FormField'
 import IconInfo from '../IconInfo'
 import {ResolutionIcon} from '../icons/Resolution'
@@ -126,19 +129,31 @@ const VideoDetails: React.FC<VideoDetailsProps> = (props) => {
                 iconRight={isResyncing && Spinner}
               />
             </Flex>
-            {modified && (
+            <Flex gap={2}>
               <Button
-                icon={CheckmarkIcon}
+                icon={DownloadIcon}
                 fontSize={2}
                 padding={3}
-                mode="ghost"
-                text="Save and close"
-                tone="positive"
-                onClick={saveChanges}
-                iconRight={isSaving && Spinner}
-                disabled={isSaving || isResyncing}
+                mode="bleed"
+                text="Download"
+                tone="default"
+                onClick={() => setState('downloading')}
+                disabled={isSaving}
               />
-            )}
+              {modified && (
+                <Button
+                  icon={CheckmarkIcon}
+                  fontSize={2}
+                  padding={3}
+                  mode="ghost"
+                  text="Save and close"
+                  tone="positive"
+                  onClick={saveChanges}
+                  iconRight={isSaving && Spinner}
+                  disabled={isSaving || isResyncing}
+                />
+              )}
+            </Flex>
           </Flex>
         </Card>
       }
@@ -154,6 +169,10 @@ const VideoDetails: React.FC<VideoDetailsProps> = (props) => {
             props.closeDialog()
           }}
         />
+      )}
+
+      {state === 'downloading' && (
+        <DownloadAssetDialog asset={props.asset} onClose={() => setState('idle')} absolute />
       )}
 
       {/* CONFIRM CLOSING DIALOG */}
@@ -234,6 +253,18 @@ const VideoDetails: React.FC<VideoDetailsProps> = (props) => {
                   tracks={
                     displayInfo?.text_tracks ||
                     props.asset.data?.tracks?.filter(isCaptionTrack) ||
+                    []
+                  }
+                />
+                <AudioTracksManager
+                  asset={props.asset}
+                  iconOnly
+                  collapseTracks
+                  tracks={
+                    displayInfo?.audio_tracks ||
+                    props.asset.data?.tracks?.filter(
+                      (track): track is MuxAudioTrack => track.type === 'audio',
+                    ) ||
                     []
                   }
                 />

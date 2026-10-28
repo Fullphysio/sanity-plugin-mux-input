@@ -52,11 +52,13 @@ export function uploadUrl({
   url,
   settings,
   client,
+  assetName,
 }: {
   url: string
   settings: MuxNewAssetSettings
   client: SanityClient
   watermark?: WatermarkConfig
+  assetName?: string
 }) {
   return testUrl(url).pipe(
     switchMap((validUrl) => {
@@ -76,7 +78,7 @@ export function uploadUrl({
             const query: Record<string, string> = {
               muxBody: sanitizePxStringsInJson(JSON.stringify(muxBody)),
             }
-            const filename = validUrl.split('/').slice(-1)[0]
+            const filename = assetName || validUrl.split('/').slice(-1)[0]
             if (filename) {
               query['filename'] = filename
             }
@@ -117,11 +119,13 @@ export function uploadFile({
   client,
   file,
   watermark,
+  assetName,
 }: {
   settings: MuxNewAssetSettings
   client: SanityClient
   file: File
   watermark?: WatermarkConfig
+  assetName?: string
 }) {
   return testFile(file).pipe(
     switchMap((fileOptions) => {
@@ -168,7 +172,7 @@ export function uploadFile({
                       if (event.type !== 'success') {
                         return of(event)
                       }
-                      return from(updateAssetDocumentFromUpload(client, uuid, watermark)).pipe(
+                      return from(updateAssetDocumentFromUpload(client, uuid, watermark, assetName)).pipe(
                         mergeMap((doc) => of({...event, asset: doc})),
                       )
                     }),
@@ -243,6 +247,7 @@ async function updateAssetDocumentFromUpload(
   client: SanityClient,
   uuid: string,
   _watermark?: WatermarkConfig,
+  assetName?: string,
 ) {
   let upload: UploadResponse
   let asset: {data: MuxAsset}
@@ -263,6 +268,7 @@ async function updateAssetDocumentFromUpload(
     assetId: asset.data.id,
     playbackId: asset.data.playback_ids[0]?.id,
     uploadId: upload.data.id,
+    filename: (assetName) ? assetName : undefined,
   }
   await uploadedAssetTransaction(client, uuid, fields).commit({returnDocuments: false})
   return {_id: uuid, _type: 'mux.videoAsset', ...fields}

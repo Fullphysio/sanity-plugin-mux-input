@@ -5,9 +5,11 @@ import {useState} from 'react'
 export type DialogState =
   | 'secrets'
   | 'mezzanine'
+  | 'download-asset'
   | 'select-video'
   | 'edit-thumbnail'
   | 'edit-captions'
+  | 'edit-audio-tracks'
   | 'robots'
   | false
 
