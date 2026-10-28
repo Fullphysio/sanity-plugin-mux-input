@@ -286,11 +286,7 @@ const ASSET_SORT_OPTIONS = {
 		label: "By filename (Z-A)"
 	}
 }, useAssetDocuments = createHookFromObservableFactory(({ documentStore, sort, searchQuery }) => {
-	let search = createSearchFilter(searchQuery), filter = [
-		"_type == \"mux.videoAsset\"",
-		"defined(playbackId)",
-		...search.filter
-	].filter(Boolean).join(" && "), sortFragment = ASSET_SORT_OPTIONS[sort].groq;
+	let search = createSearchFilter(searchQuery), filter = ["_type == \"mux.videoAsset\"", ...search.filter].filter(Boolean).join(" && "), sortFragment = ASSET_SORT_OPTIONS[sort].groq;
 	return documentStore.listenQuery(`*[${filter}] | order(${sortFragment})`, search.params, { apiVersion: SANITY_API_VERSION });
 });
 function useAssets() {
