@@ -5,6 +5,7 @@ import pkg from './package.json' with {type: 'json'}
 
 export default defineConfig({
   entry: ['./src/_exports/index.ts'],
+  exports: false,
   styledComponents: true,
   reactCompiler: {transform: 'oxc'},
   define: {__PKG_VERSION__: JSON.stringify(pkg.version)},
